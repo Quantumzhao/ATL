@@ -1,0 +1,23 @@
+eval := (e,  env) => {
+    switch (e) {
+    case (int i):
+        return i;
+    case (`Add, i1, i2):
+        return eval i1 env + eval i2 env;
+    case (`Var, name):
+        switch (env::find(name)) {
+            case (`Fun, _, _, _):
+                return 0;
+            case (int i):
+                return i;
+        }
+    case (`App, fname, args):
+        switch (env::find(fname)) {
+            case (`Fun, fname, ps, body):
+                env = env::prepend(zip(ps, args));
+                return eval(body, env)
+            case _:
+                return 0;
+        }
+    }
+}
