@@ -1,10 +1,10 @@
 name:                TSharp
 version:             0.1.0.0
-github:              "githubuser/TSharp"
+github:              "Quantumzhao/TSharp"
 license:             BSD-3-Clause
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2023 Author name here"
+author:              "Quantumzhao"
+maintainer:          "yishanzh@umd.edu"
+copyright:           "2023 Quantumzhao"
 
 extra-source-files:
 - README.md
@@ -21,6 +21,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- mtl >= 0.1
 
 ghc-options:
 - -Wall

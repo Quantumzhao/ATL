@@ -7,11 +7,11 @@ cabal-version: 2.2
 name:           TSharp
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/TSharp#readme>
-homepage:       https://github.com/githubuser/TSharp#readme
-bug-reports:    https://github.com/githubuser/TSharp/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2023 Author name here
+homepage:       https://github.com/Quantumzhao/TSharp#readme
+bug-reports:    https://github.com/Quantumzhao/TSharp/issues
+author:         Quantumzhao
+maintainer:     yishanzh@umd.edu
+copyright:      2023 Quantumzhao
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
@@ -21,10 +21,11 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/TSharp
+  location: https://github.com/Quantumzhao/TSharp
 
 library
   exposed-modules:
+      Assumptions
       Evaluator
       Interpreter
       Lib
@@ -38,6 +39,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , mtl >=0.1
   default-language: Haskell2010
 
 executable TSharp-exe
@@ -52,6 +54,7 @@ executable TSharp-exe
   build-depends:
       TSharp
     , base >=4.7 && <5
+    , mtl >=0.1
   default-language: Haskell2010
 
 test-suite TSharp-test
@@ -67,4 +70,5 @@ test-suite TSharp-test
   build-depends:
       TSharp
     , base >=4.7 && <5
+    , mtl >=0.1
   default-language: Haskell2010

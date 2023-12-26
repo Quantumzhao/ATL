@@ -1,22 +1,25 @@
 module Types
     (
-        Var, 
+        Variable, 
         Value(..), 
         Expr(..),
-        Case, 
+        Pattern(..), 
         Statement(..), 
         Program,
-        Error
+        TypeExpr(..),
+        Unchecked
     ) 
     where
 
-type Var = String
+import Control.Monad.Except (Except)
+
+type Variable = String
 data Value = Int Int
            | Bool Bool
            | Array [Value]
            | LinkedList [Value]
-           | Struct [(Var, Value)]
-           | Function [Var] [Statement]
+           | Struct [(Variable, Value)]
+           | Function [Variable] [Statement]
 data Expr = Equal Expr Expr
           | GreaterThan Expr Expr
           | LessThan Expr Expr
@@ -28,16 +31,25 @@ data Expr = Equal Expr Expr
           | Literal Value
           | ArrayExpr [Expr]
           | LinkedListExpr [Expr]
-          | StructExpr [(Var, Expr)]
-data Case = C
-data Statement = Assign Var Expr
+          | StructExpr [(Variable, Expr)]
+          | Variable Variable
+data Pattern = Match Value
+             | Bind Variable
+data Statement = Assign Variable Expr
+               | AssignDefine Variable Expr
                | If Expr [Statement] [Statement]
                | While Expr [Statement]
-               | Switch Expr [Case]
+               | Switch Expr [Pattern]
                | Return Expr
+               | Break
+data TypeExpr = TypeVar Variable
+              | Product Variable Variable
+              | Union Variable Variable
+              | Dependent Expr
+              | TypeArray
+              | TypeLList
 type Program = [Statement]
-type Error = String
-
+type Unchecked = Except String
 instance Eq Value where
     Int i1 == Int i2 = i1 == i2
     Bool b1 == Bool b2 = b1 == b2
