@@ -2,21 +2,37 @@ module Assumptions
     (
         Environment,
         ContextP,
-        find
+        find,
+        findM,
+        findByNameM,
+        doesExist
     )
     where
 
-import Control.Monad.State (StateT)
-import Control.Monad.Except (MonadError(throwError))
+import Control.Monad.State ( StateT , get )
+import Control.Monad.Except ( throwError )
 import Types
 
-type Environment = [(Variable, Value)]
+type KeyValuePair = (Variable, Value)
+type Environment = [KeyValuePair]
+-- P stands for partial
 type ContextP = StateT Environment Unchecked
 
-find :: Environment -> Variable -> Unchecked Value
-find [] name = throwError $ "Environment does not contain" <> name
-find ((key, value) : tl) name = 
-    if key == name then return value
-    else find tl name
+find :: Environment -> (KeyValuePair -> Bool) -> Maybe Value
+find [] _ = Nothing
+find (kvp@(_, value) : tl) f = do
+    if f kvp then return value
+    else find tl f
 
+findM :: (KeyValuePair -> Bool) -> ContextP Value
+findM f = do
+    env <- get
+    case find env f of
+        Just v -> return v
+        Nothing -> throwError "not found"
 
+findByNameM :: Variable -> ContextP Value
+findByNameM name = findM $ \x -> fst x == name
+
+doesExist :: Environment -> Variable -> Bool
+doesExist env name = foldl (\a (var, _) -> (var == name) || a) False env

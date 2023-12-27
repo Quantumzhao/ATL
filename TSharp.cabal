@@ -26,7 +26,6 @@ source-repository head
 library
   exposed-modules:
       Assumptions
-      Evaluator
       Interpreter
       Lib
       Types
