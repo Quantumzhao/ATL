@@ -9,9 +9,10 @@ module Interpreter
 where
 
 import Types
-import Assumptions( Environment , ContextP , doesExist , findByNameM )
+import Assumptions( Environment , ContextP , doesExist , findByNameM , find )
 import Control.Monad.State( get, modify , evalStateT )
 import Control.Monad.Except( throwError )
+import Control.Monad ( liftM2 )
 
 eval :: Environment -> Expr -> Unchecked Value
 eval env expr = evalStateT (evalM expr) env
@@ -72,18 +73,17 @@ evalM (ArrayExpr as) = do
             v <- evalM hd
             vs <- evalArr tl
             return $ v : vs
-evalM (LinkedListExpr ls) = do
-    vs <- evalLL ls
-    return $ LinkedList $ vs
-    where
-        evalLL [] = return []
-        evalLL (hd : tl) = do
-            v <- evalM hd
-            vs <- evalLL tl
-            return $ v : vs
-evalM (StructExpr s) = do
-    vs <- evalS s
-    return $ Struct $ vs
+-- evalM (LinkedListExpr ls) = do
+--     vs <- evalLL ls
+--     return $ LinkedList $ vs
+--     where
+--         evalLL [] = return []
+--         evalLL (hd : tl) = do
+--             v <- evalM hd
+--             vs <- evalLL tl
+--             return $ v : vs
+evalM (RecordExpr s) = 
+    evalS s >>= return . Record
     where
         evalS [] = return []
         evalS ((name, hd) : tl) = do
@@ -146,26 +146,42 @@ execute (ReturnX x) = (evalM x) >>= return . SigReturnX
 execute Return = return SigReturn
 execute Break = return SigBreak
 execute (Impure expr) = evalM expr >> return SigContinue
-execute (Switch expr ps) = do
+execute (Switch expr cs) = do
     v <- evalM expr
-    checkPatterns v ps
+    checkCases v cs
     where
-    checkPattern v ptns = case (v, ptns) of
-        (Int i, [Match mv]) -> assert (Int i) mv
-        (Int i, [Bind i']) -> expand i' (Int i)
-        (Bool b, [Match mv]) -> assert (Bool b) mv
-        (Bool b, [Bind b']) -> expand b' (Bool b)
-        (Unit, [Match mv]) -> assert Unit mv
-        (Unit, [Bind u']) -> expand u' Unit
+    checkPattern v ptn = case (v, ptn) of
+        (Int _, ValueP (MatchV mx)) -> evalM mx >>= assert v
+        (Int _, ValueP (BindV i')) -> expand i' v
+        (Bool _, ValueP (MatchV mx)) -> evalM mx >>= assert v
+        (Bool _, ValueP (BindV b')) -> expand b' v
+        (Unit, ValueP (MatchV mx)) -> evalM mx >>= assert v
+        (Unit, ValueP (BindV u')) -> expand u' v
+        (Record kvps, RecordP rps) -> checkRecord kvps rps
+        (Array a, ArrayP aps) -> checkArray a aps
         _ -> return False
-    checkPatterns _ [] = return SigContinue
-    checkPatterns v ((ptn, body) : rest) = do
+    checkCases _ [] = return SigContinue
+    checkCases v ((ptn, body) : rest) = do
         b <- checkPattern v ptn
         if b then executeMany body
-        else checkPatterns v rest 
+        else checkCases v rest 
+    checkRecord kvps ((key, ptn) : rest) = 
+        case find kvps (\kvp -> fst kvp == key) of
+            Just v -> liftM2 (&&) (checkPattern v ptn) (checkRecord kvps rest)
+            Nothing -> return False
+    checkRecord _ [] = return False
+    checkArray [] EmptyA = return True
+    checkArray (v : rest) (CheckA p aps) = liftM2 (&&) (checkPattern v p) (checkArray rest aps)
+    checkArray (_ : _) (SkipSomeA EmptyA) = return True
+    checkArray (_ : _ : rest) (SkipSomeA (SkipSomeA aps)) = checkArray rest aps
+    checkArray (_ : v : rest) sa@(SkipSomeA (CheckA p as)) = do
+        res <- checkPattern v p
+        if res then checkArray rest as
+        else checkArray rest sa
+    checkArray _ _ = return False
     expand :: Variable -> Value -> ContextP Bool
     expand name v = modify ((name, v) :) >> return True
-    assert value match = return $ value == match
+    assert value match = return $ (value == match)
 
 executeMany :: [Statement] -> ContextP Signal
 executeMany [] = return SigReturn

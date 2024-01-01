@@ -10,7 +10,10 @@ module Types
         Unchecked,
         Signal(..),
         CaseClause,
-        Patterns
+        ArrayPattern(..),
+        ValuePattern(..),
+        LListPattern(..),
+        RecordEntryPattern
     ) 
     where
 
@@ -21,8 +24,8 @@ data Value = Int Int
            | Bool Bool
            | Unit
            | Array [Value]
-           | LinkedList [Value]
-           | Struct [(Variable, Value)]
+        --    | LinkedList [Value]
+           | Record [(Variable, Value)]
            | Function [Variable] [Statement]
            | Exception String {- !!WARNING!! ONLY FOR ERROR -}
 data Expr = Equal Expr Expr
@@ -35,12 +38,23 @@ data Expr = Equal Expr Expr
           | Subtract Expr Expr
           | Literal Value
           | ArrayExpr [Expr]
-          | LinkedListExpr [Expr]
-          | StructExpr [(Variable, Expr)]
+        --   | LinkedListExpr [Expr]
+          | RecordExpr [(Variable, Expr)]
           | Variable Variable
           | Call Variable [Expr]
-data Pattern = Match Value
-             | Bind Variable
+data ValuePattern = MatchV Expr
+                  | BindV Variable
+data ArrayPattern = EmptyA
+                  | SkipSomeA ArrayPattern
+                  | CheckA Pattern ArrayPattern
+data LListPattern = EmptyL
+                  | MatchL Expr LListPattern
+                  | BindL Pattern LListPattern
+data Pattern = ValueP ValuePattern
+             | ArrayP ArrayPattern
+            --  | LListP LListPattern
+             | RecordP [RecordEntryPattern]
+             | Wildcard
                {- assign a value without promoting the variable to the subtype
                   e.g. int a =[ a = 5; ]=> int a -}
 data Statement = Assign Variable Expr
@@ -72,12 +86,12 @@ data Signal = SigReturn
             | SigBreak
 type Program = [Statement]
 type Unchecked = Except String
-type CaseClause = (Patterns, [Statement])
-type Patterns = [Pattern]
+type CaseClause = (Pattern, [Statement])
+type RecordEntryPattern = (Variable, Pattern)
 instance Eq Value where
     Int i1 == Int i2 = i1 == i2
     Bool b1 == Bool b2 = b1 == b2
     Array a1 == Array a2 = a1 == a2
-    LinkedList l1 == LinkedList l2 = l1 == l2
-    Struct s1 == Struct s2 = s1 == s2
+    -- LinkedList l1 == LinkedList l2 = l1 == l2
+    Record s1 == Record s2 = s1 == s2
     _ == _ = False

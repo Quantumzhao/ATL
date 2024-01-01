@@ -22,6 +22,9 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - mtl >= 0.1
+# - utility-ht >= 0.0
+- containers >= 0.0
+- megaparsec >= 0.0
 
 ghc-options:
 - -Wall
