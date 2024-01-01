@@ -1,6 +1,6 @@
-name:                TSharp
+name:                ATL
 version:             0.1.0.0
-github:              "Quantumzhao/TSharp"
+github:              "Quantumzhao/ATL"
 license:             BSD-3-Clause
 author:              "Quantumzhao"
 maintainer:          "yishanzh@umd.edu"
@@ -41,7 +41,7 @@ library:
   source-dirs: src
 
 executables:
-  TSharp-exe:
+  ATL-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -49,10 +49,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - TSharp
+    - ATL
 
 tests:
-  TSharp-test:
+  ATL-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -60,4 +60,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - TSharp
+    - ATL

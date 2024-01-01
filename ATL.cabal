@@ -4,11 +4,11 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 
-name:           TSharp
+name:           ATL
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/TSharp#readme>
-homepage:       https://github.com/Quantumzhao/TSharp#readme
-bug-reports:    https://github.com/Quantumzhao/TSharp/issues
+homepage:       https://github.com/Quantumzhao/ATL#readme
+bug-reports:    https://github.com/Quantumzhao/ATL/issues
 author:         Quantumzhao
 maintainer:     yishanzh@umd.edu
 copyright:      2023 Quantumzhao
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/Quantumzhao/TSharp
+  location: https://github.com/Quantumzhao/ATL
 
 library
   exposed-modules:
@@ -31,9 +31,9 @@ library
       Parser
       Types
   other-modules:
-      Paths_TSharp
+      Paths_ATL
   autogen-modules:
-      Paths_TSharp
+      Paths_ATL
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
@@ -44,35 +44,35 @@ library
     , mtl >=0.1
   default-language: Haskell2010
 
-executable TSharp-exe
+executable ATL-exe
   main-is: Main.hs
   other-modules:
-      Paths_TSharp
+      Paths_ATL
   autogen-modules:
-      Paths_TSharp
+      Paths_ATL
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      TSharp
+      ATL
     , base >=4.7 && <5
     , containers >=0.0
     , megaparsec >=0.0
     , mtl >=0.1
   default-language: Haskell2010
 
-test-suite TSharp-test
+test-suite ATL-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_TSharp
+      Paths_ATL
   autogen-modules:
-      Paths_TSharp
+      Paths_ATL
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      TSharp
+      ATL
     , base >=4.7 && <5
     , containers >=0.0
     , megaparsec >=0.0
