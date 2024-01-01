@@ -1,4 +1,4 @@
-module Assumptions
+module Interpreter.Assumptions
     (
         Environment,
         ContextP,
@@ -11,7 +11,7 @@ module Assumptions
 
 import Control.Monad.State ( StateT , get )
 import Control.Monad.Except ( throwError )
-import Types
+import Interpreter.Types
 
 type KeyValuePair = (Variable, Value)
 type Environment = [KeyValuePair]

@@ -1,4 +1,4 @@
-module Types
+module Interpreter.Types
     (
         Variable, 
         Value(..), 

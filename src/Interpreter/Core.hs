@@ -1,4 +1,4 @@
-module Interpreter
+module Interpreter.Core
 (
     eval,
     evalM,
@@ -8,8 +8,8 @@ module Interpreter
 )
 where
 
-import Types
-import Assumptions( Environment , ContextP , doesExist , findByNameM , find )
+import Interpreter.Types
+import Interpreter.Assumptions( Environment , ContextP , doesExist , findByNameM , find )
 import Control.Monad.State( get, modify , evalStateT )
 import Control.Monad.Except( throwError )
 import Control.Monad ( liftM2 )

@@ -25,11 +25,10 @@ source-repository head
 
 library
   exposed-modules:
-      Assumptions
-      Interpreter
-      Lib
+      Interpreter.Assumptions
+      Interpreter.Core
+      Interpreter.Types
       Parser
-      Types
   other-modules:
       Paths_ATL
   autogen-modules:
