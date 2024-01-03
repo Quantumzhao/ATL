@@ -1,23 +1,21 @@
 module Interpreter.Types
-    (
-        Variable, 
-        Value(..), 
-        Expr(..),
-        Pattern(..), 
-        Statement(..), 
-        Program,
-        TypeExpr(..),
-        Unchecked,
-        Signal(..),
-        CaseClause,
-        ArrayPattern(..),
-        ValuePattern(..),
-        LListPattern(..),
-        RecordEntryPattern
-    ) 
-    where
+  ( Variable
+  , Value(..) 
+  , Expr(..)
+  , Pattern(..) 
+  , Statement(..) 
+  , Program
+  , TypeExpr(..)
+  , Unchecked
+  , Signal(..)
+  , CaseClause
+  , ArrayPattern(..)
+  , ValuePattern(..)
+  , LListPattern(..)
+  , RecordEntryPattern ) 
+  where
 
-import Control.Monad.Except (Except)
+import Control.Monad.Except ( Except )
 
 type Variable = String
 data Value = Int Int
@@ -55,14 +53,7 @@ data Pattern = ValueP ValuePattern
             --  | LListP LListPattern
              | RecordP [RecordEntryPattern]
              | Wildcard
-               {- assign a value without promoting the variable to the subtype
-                  e.g. int a =[ a = 5; ]=> int a -}
 data Statement = Assign Variable Expr
-               {- assign a value and promote the variable to the subtype
-                  e.g. int a =[ a = 5; ]=> {5} a -}
-               {- Thus,
-                  ⊤ a =[ a := 5; ]=> {5} a // O.K. 
-                  ⊤ a =[ a = 5; ]=> ⊤ a // valid, but useless -}
                | AssignDefine Variable Expr
                | If Expr [Statement] [Statement]
                | While Expr [Statement]
@@ -89,9 +80,9 @@ type Unchecked = Except String
 type CaseClause = (Pattern, [Statement])
 type RecordEntryPattern = (Variable, Pattern)
 instance Eq Value where
-    Int i1 == Int i2 = i1 == i2
-    Bool b1 == Bool b2 = b1 == b2
-    Array a1 == Array a2 = a1 == a2
-    -- LinkedList l1 == LinkedList l2 = l1 == l2
-    Record s1 == Record s2 = s1 == s2
-    _ == _ = False
+  Int i1 == Int i2 = i1 == i2
+  Bool b1 == Bool b2 = b1 == b2
+  Array a1 == Array a2 = a1 == a2
+  -- LinkedList l1 == LinkedList l2 = l1 == l2
+  Record s1 == Record s2 = s1 == s2
+  _ == _ = False
