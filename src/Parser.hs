@@ -1,27 +1,23 @@
 module Parser
-(
-  parseProgram
+( parseProgram
 )
 where
 
 import Prelude hiding ((<>))
 import Text.Megaparsec
-    ( (<|>),
-    empty,
-    optional,
-    anySingle,
-    runParser,
-    satisfy,
-    choice,
-    many,
-    some,
-    Parsec,
-    try
-    , eof )
-import Text.Megaparsec.Char ( char, space, string )
+  ( (<|>)
+  , satisfy
+  , choice
+  , many
+  , some
+  , Parsec
+  , try
+  , eof )
+import Text.Megaparsec.Char ( char, string )
 import Data.Void ( Void )
 import Data.Char ( isAlphaNum , isDigit )
 import Interpreter.Types
+import Control.Monad ( void )
 
 type Parser = Parsec Void String
 
@@ -31,8 +27,8 @@ symbolChars = satisfy $ \c -> isAlphaNum c || c  == '_'
 digit :: Parser Char
 digit = satisfy isDigit
 
-parseValidSymbol :: [String] -> Parser String
-parseValidSymbol symbol = choice (string <$> symbol) <* space
+parseValidSymbol :: Parser String
+parseValidSymbol = some symbolChars
 
 parseInt :: Parser Expr
 parseInt = (Literal . Int . read) <$> ((++) <$> string "-" <*> some digit <|> some digit)
@@ -46,22 +42,38 @@ colon = char ';'
 parseUnit :: Parser Expr
 parseUnit = string "()" *> (pure $ Literal Unit)
 
+parseManySep :: Parser a -> Parser [a]
+parseManySep p = try (do
+  x <- p
+  xs <- many (char ',' *> p)
+  return $ x : xs)
+  <|> pure []
+
 parseArray :: Parser Expr
-parseArray = ArrayExpr <$> (char '[' *> many parseExpr <* char ']')
-  where
-  -- innerExprs = choice [pure, parseExpr]
+parseArray = ArrayExpr <$> (char '[' *> parseManySep parseExpr <* char ']')
 
 parseParen :: Parser Expr
 parseParen = char '(' *> parseExpr <* char ')'
 
 parseRecord :: Parser Expr
-parseRecord = undefined
+parseRecord = RecordExpr <$> (char '{' *> parseManySep parseKvp <* char '}')
+  where
+    parseKvp = do
+      key <- parseValidSymbol
+      void $ char '='
+      value <- parseExpr
+      return (key, value)
 
 parseVariable :: Parser Expr
-parseVariable = undefined
+parseVariable = Variable <$> parseValidSymbol
 
 parseCall :: Parser Expr
-parseCall = undefined
+parseCall = do
+  fname <- parseValidSymbol
+  void $ char '('
+  exprs <- parseManySep parseExpr
+  void $ char ')'
+  return $ Call fname exprs
 
 parseExpr :: Parser Expr
 parseExpr = choice
@@ -74,14 +86,19 @@ parseExpr = choice
   , try parseVariable ]
 
 parseAssign :: Parser Statement
-parseAssign = undefined
+parseAssign = do
+  void $ string "var"
+  var <- parseValidSymbol
+  void $ char '='
+  expr <- parseExpr
+  return $ AssignDefine var expr
 
 parseBlock :: Parser [Statement]
 parseBlock = char '{' *> parseStatements <* char '}'
 
 parseIf :: Parser Statement
 parseIf = do
-  _ <- string "if"
+  void $ string "if"
   c <- parseParen
   t <- parseBlock
   f <- parseBlock
@@ -89,16 +106,22 @@ parseIf = do
 
 parseWhile :: Parser Statement
 parseWhile = do
-  _ <- string "while"
+  void $ string "while"
   c <- parseParen
   l <- parseBlock
   return $ While c l
 
 parseSwitch :: Parser Statement
 parseSwitch = do
-  _ <- string "switch"
+  void $ string "switch"
   c <- parseParen
-  undefined
+  void $ char '{'
+  cs <- parseCases
+  void $ char '}'
+  return $ Switch c cs
+  where
+    parseCases = undefined
+    parseCase = undefined
 
 parseReturnX :: Parser Statement
 parseReturnX = ReturnX <$> (string "return" *> parseExpr <* colon)

@@ -40,7 +40,7 @@ var x; // x : ⊤
 sum(x); // not ok, ⊤ is not a subtype of Tree
 ```
 
-How is it different from TypeScript?
+<!-- How is it different from TypeScript?
 
 Example:
 ```
@@ -88,4 +88,4 @@ then T ∈ `Int`.
   `var x; x = 1;`
 6. The type for x in this case is `{1}`
 7. The only inhabitants of `{1}` and `{8}` are `1` and `8`, so the range of `+` is `{1+8} = {9}`
-8. `y : {9}`
+8. `y : {9}` -->
