@@ -46,8 +46,8 @@ inferTypeOf (XSub e1 e2) = do
   id1 <- inferTypeOf e1
   id2 <- inferTypeOf e2
   findByID subtractType >>= call [id1, id2]
-inferTypeOf e@(XInt _) = return $ TSingleton e
-inferTypeOf e@(XBool _) = return $ TSingleton e
+inferTypeOf (XInt i) = return $ TUnion TBottom $ TInt $ INumber i
+inferTypeOf (XBool b) = return $ TUnion TBottom $ TBool $ BValue b
 inferTypeOf XUnit = return TUnit
 inferTypeOf (XArray es) = do
   ids <- inferTypeOfMany es >>= tryUpdateDAGMany
@@ -79,6 +79,17 @@ inferTypeOf (XProc ps body) = undefined
 inferTypeOfMany :: [Expr] -> EnvironmentP [TypeExpr]
 inferTypeOfMany = foldl (\a x -> liftM2 (:) (inferTypeOf x) a) (pure [])
 
+isSingleton :: TypeExpr -> Bool
+isSingleton (TInt (INumber _)) = True
+isSingleton (TBool (BValue _)) = True
+isSingleton TUnit = True
+isSingleton (TUnion t1 t2) = isSingleton t1 && isSingleton t2
+isSingleton (TStruct kvps) = case kvps of
+  [] -> True
+  (_, t) : tl -> isSingleton t && isSingleton (TStruct tl)
+isSingleton (TArray n t annotations) = isSingleton t || undefined
+isSingleton _ = False
+
 eqType :: ID
 eqType = undefined
 
@@ -108,7 +119,7 @@ intType :: ID
 intType = undefined
 
 boolType :: TypeExpr
-boolType = TBool
+boolType = undefined
 
 unitType :: TypeExpr
 unitType = TUnit

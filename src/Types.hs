@@ -8,7 +8,6 @@ module Types
   , Pattern(..) 
   , Statement(..) 
   , Program
-  -- , TBool(..)
   , TypeExpr(..)
   , Unchecked
   , Signal(..)
@@ -16,7 +15,9 @@ module Types
   , ArrayPattern(..)
   , ValuePattern(..)
   , LListPattern(..)
-  , RecordEntryPattern ) 
+  , RecordEntryPattern
+  , TypeInt(..)
+  , TypeBool(..) ) 
   where
 
 import Control.Monad.Except ( Except )
@@ -81,21 +82,21 @@ data Statement = Assign Variable Expr
                | Return
                | Break
                | Impure Expr
-data TypeExpr = TSingleton Expr
-              | TUnion [TypeExpr]
-              | TRange Expr Expr
-              | TBool
-              | TInt
+data TypeExpr = TUnion TypeExpr TypeExpr
+              | TInt TypeInt
+              | TBool TypeBool
               | TArray Expr TypeExpr [(Index, ID)]
               | TStruct [(Variable, TypeExpr)]
               | TVar Variable
-              | TImmutable TypeExpr
               | TTop
               | TBottom
               | TUnit
-              | TTrue
-              | TFalse
               | TMap [TypeExpr] TypeExpr
+data TypeInt = IInteger
+             | IRange Expr Expr
+             | INumber Int
+data TypeBool = BBool
+              | BValue Bool
 data Signal = SigReturn
             | SigReturnX Value
             | SigContinue
