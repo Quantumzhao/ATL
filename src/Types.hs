@@ -8,13 +8,14 @@ module Types
   , Pattern(..) 
   , Statement(..) 
   , Program
+  , Procedure
   , TypeExpr(..)
   , Unchecked
   , Signal(..)
   , CaseClause
   , ArrayPattern(..)
   , ValuePattern(..)
-  , LListPattern(..)
+  -- , LListPattern(..)
   , RecordEntryPattern
   , TypeInt(..)
   , TypeBool(..) ) 
@@ -22,14 +23,13 @@ module Types
 
 import Control.Monad.Except ( Except )
 
-type Variable = String
 data Value = Int Int
            | Bool Bool
-           | Unit
+           | Null
            | Array [Value]
         --    | LinkedList [Value]
            | Struct [(Variable, Value)]
-           | Proc [Variable] [Statement]
+          --  | Proc [Variable] [Statement]
           --  | Exception String {- !!WARNING!! ONLY FOR ERROR -}
 data Expr = XEqual Expr Expr
           | XGt Expr Expr
@@ -41,66 +41,55 @@ data Expr = XEqual Expr Expr
           | XSub Expr Expr
           | XInt Int
           | XBool Bool
-          | XUnit
-          | XProc [Variable] [Statement]
+          -- | XNull
+          -- | XProc [Variable] [Statement]
           | XArray [Expr]
           | XStruct [(Variable, Expr)]
           | XVar Variable
           | XCall Variable [Expr]
--- data Expr a where
---   Equal :: Expr a -> Expr a -> Expr Bool
---   GreaterThan :: Expr Int -> Expr Int -> Expr Bool
---   LessThan :: Expr Int -> Expr Int -> Expr Bool
---   And :: Expr Bool -> Expr Bool -> Expr Bool
---   Or :: Expr Bool -> Expr Bool -> Expr Bool
---   Not :: Expr Bool -> Expr Bool
---   Add :: Expr Int -> Expr Int -> Expr Int
---   Subtract :: Expr Int -> Expr Int -> Expr Int
---   Literal :: Value -> Expr a
---   ExprArr :: [Expr a] -> Expr a
---   ExprVar :: Variable -> Expr a
---   App :: Variable -> [Expr a] -> Expr a
 data ValuePattern = MatchV Expr
                   | BindV Variable
 data ArrayPattern = EmptyA
                   | SkipSomeA ArrayPattern
                   | CheckA Pattern ArrayPattern
-data LListPattern = EmptyL
-                  | MatchL Expr LListPattern
-                  | BindL Pattern LListPattern
-data Pattern = ValueP ValuePattern
-             | ArrayP ArrayPattern
+-- data LListPattern = EmptyL
+--                   | MatchL Expr LListPattern
+--                   | BindL Pattern LListPattern
+data Pattern = PValue ValuePattern
+             | PArray ArrayPattern
             --  | LListP LListPattern
-             | RecordP [RecordEntryPattern]
-             | Wildcard
-data Statement = Assign Variable Expr
-               | AssignDefine Variable Expr
-               | If Expr [Statement] [Statement]
-               | While Expr [Statement]
+             | PStruct [RecordEntryPattern]
+             | PWildcard
+data Statement = SAssign Variable Expr
+               | SNarrow Variable Expr
+               | SDeclare Variable
+               | SIf Expr [Statement] [Statement]
+               | SWhile Expr [Statement]
                | Switch Expr [CaseClause]
-               | ReturnX Expr
-               | Return
-               | Break
-               | Impure Expr
+               | SReturn Expr
+               | SBreak
+               | SImpure Expr
+               | SProcedure Procedure
 data TypeExpr = TUnion TypeExpr TypeExpr
               | TInt TypeInt
               | TBool TypeBool
-              | TArray Expr TypeExpr [(Index, ID)]
+              | TArray Int TypeExpr [(Index, ID)]
               | TStruct [(Variable, TypeExpr)]
               | TVar Variable
               | TTop
               | TBottom
-              | TUnit
+              | TNull
               | TMap [TypeExpr] TypeExpr
 data TypeInt = IInteger
              | IRange Expr Expr
              | INumber Int
 data TypeBool = BBool
               | BValue Bool
-data Signal = SigReturn
-            | SigReturnX Value
+data Signal = SigReturn Value
             | SigContinue
             | SigBreak
+type Variable = String
+type Procedure = (Variable, [Variable], [Statement])
 type Program = [Statement]
 type Unchecked = Except String
 type CaseClause = (Pattern, [Statement])

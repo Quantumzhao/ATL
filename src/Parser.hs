@@ -1,5 +1,8 @@
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+
 module Parser
-( parseProgram
+( 
 )
 where
 
@@ -37,11 +40,11 @@ parseInt = XInt . read <$> ((++) <$> string "-" <*> some digit <|> some digit)
 parseBool :: Parser Expr
 parseBool = XBool . read <$> choice [string "true", string "false"]
 
-colon :: Parser Char
-colon = char ';'
+semicolon :: Parser Char
+semicolon = char ';'
 
-parseUnit :: Parser Expr
-parseUnit = string "()" $> XUnit
+-- parseUnit :: Parser Expr
+-- parseUnit = string "()" $> XUnit
 
 parseManySep :: Parser a -> Parser [a]
 parseManySep p = try (do
@@ -80,72 +83,72 @@ parseExpr :: Parser Expr
 parseExpr = choice
   [ try parseInt
   , try parseBool
-  , try parseUnit
+  -- , try parseUnit
   , try parseArray
   , try parseRecord
   , try parseCall
   , try parseVariable ]
 
-parseAssign :: Parser Statement
-parseAssign = do
-  void $ string "var"
-  var <- parseValidSymbol
-  void $ char '='
-  AssignDefine var <$> parseExpr
+-- parseAssign :: Parser Statement
+-- parseAssign = do
+--   void $ string "var"
+--   var <- parseValidSymbol
+--   void $ char '='
+--   AssignDefine var <$> parseExpr
 
-parseBlock :: Parser [Statement]
-parseBlock = char '{' *> parseStatements <* char '}'
+-- parseBlock :: Parser [Statement]
+-- parseBlock = char '{' *> parseStatements <* char '}'
 
-parseIf :: Parser Statement
-parseIf = do
-  void $ string "if"
-  c <- parseParen
-  t <- parseBlock
-  If c t <$> parseBlock
+-- parseIf :: Parser Statement
+-- parseIf = do
+--   void $ string "if"
+--   c <- parseParen
+--   t <- parseBlock
+--   If c t <$> parseBlock
 
-parseWhile :: Parser Statement
-parseWhile = do
-  void $ string "while"
-  c <- parseParen
-  While c <$> parseBlock
+-- parseWhile :: Parser Statement
+-- parseWhile = do
+--   void $ string "while"
+--   c <- parseParen
+--   While c <$> parseBlock
 
-parseSwitch :: Parser Statement
-parseSwitch = do
-  void $ string "switch"
-  c <- parseParen
-  void $ char '{'
-  cs <- parseCases
-  void $ char '}'
-  return $ Switch c cs
-  where
-    parseCases = undefined
-    parseCase = undefined
+-- parseSwitch :: Parser Statement
+-- parseSwitch = do
+--   void $ string "switch"
+--   c <- parseParen
+--   void $ char '{'
+--   cs <- parseCases
+--   void $ char '}'
+--   return $ Switch c cs
+--   where
+--     parseCases = undefined
+--     parseCase = undefined
 
-parseReturnX :: Parser Statement
-parseReturnX = ReturnX <$> (string "return" *> parseExpr <* colon)
+-- parseReturnX :: Parser Statement
+-- parseReturnX = ReturnX <$> (string "return" *> parseExpr <* colon)
 
-parseReturn :: Parser Statement
-parseReturn = (string "return" $> Return) <* colon
+-- parseReturn :: Parser Statement
+-- parseReturn = (string "return" $> Return) <* colon
 
-parseBreak :: Parser Statement
-parseBreak = (string "break" $> Break) <* colon
+-- parseBreak :: Parser Statement
+-- parseBreak = (string "break" $> Break) <* colon
 
-parseImpure :: Parser Statement
-parseImpure = Impure <$> parseExpr <* colon
+-- parseImpure :: Parser Statement
+-- parseImpure = Impure <$> parseExpr <* colon
 
-parseStatement :: Parser Statement
-parseStatement = choice
-  [ try parseAssign
-  , try parseIf
-  , try parseWhile
-  , try parseSwitch
-  , try parseReturnX
-  , try parseReturn
-  , try parseBreak
-  , try parseImpure ]
+-- parseStatement :: Parser Statement
+-- parseStatement = choice
+--   [ try parseAssign
+--   , try parseIf
+--   , try parseWhile
+--   , try parseSwitch
+--   , try parseReturnX
+--   , try parseReturn
+--   , try parseBreak
+--   , try parseImpure ]
 
-parseStatements :: Parser [Statement]
-parseStatements = many parseStatement
+-- parseStatements :: Parser [Statement]
+-- parseStatements = many parseStatement
 
-parseProgram :: Parser [Statement]
-parseProgram = parseStatements <* eof
+-- parseProgram :: Parser [Statement]
+-- parseProgram = parseStatements <* eof

@@ -1,4 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
 module TypeChecker.Rules
 ( inferTypeOf
 
@@ -46,15 +48,15 @@ inferTypeOf (XSub e1 e2) = do
   id1 <- inferTypeOf e1
   id2 <- inferTypeOf e2
   findByID subtractType >>= call [id1, id2]
-inferTypeOf (XInt i) = return $ TUnion TBottom $ TInt $ INumber i
-inferTypeOf (XBool b) = return $ TUnion TBottom $ TBool $ BValue b
-inferTypeOf XUnit = return TUnit
+inferTypeOf (XInt i) = return $ TInt $ INumber i
+inferTypeOf (XBool b) = return $ TBool $ BValue b
+-- inferTypeOf Null = return TTop
 inferTypeOf (XArray es) = do
   ids <- inferTypeOfMany es >>= tryUpdateDAGMany
   lub <- findLub ids
   lub' <- findByID lub
   extra <- locateSpecificTypes lub ids 0
-  return $ TArray (XInt $ length es) lub' extra
+  return $ TArray (length es) lub' extra
   where
     locateSpecificTypes glb (t : ts) curr = do
       res <- t `strictlyGt` glb
@@ -74,21 +76,26 @@ inferTypeOf (XCall name as) = do
   t <- findType name >>= findByID
   as' <- inferTypeOfMany as
   call as' t
-inferTypeOf (XProc ps body) = undefined
+-- inferTypeOf (XProc ps body) = undefined
 
 inferTypeOfMany :: [Expr] -> EnvironmentP [TypeExpr]
 inferTypeOfMany = foldl (\a x -> liftM2 (:) (inferTypeOf x) a) (pure [])
 
-isSingleton :: TypeExpr -> Bool
-isSingleton (TInt (INumber _)) = True
-isSingleton (TBool (BValue _)) = True
-isSingleton TUnit = True
-isSingleton (TUnion t1 t2) = isSingleton t1 && isSingleton t2
+isSingleton :: TypeExpr -> EnvironmentP Bool
+isSingleton (TInt (INumber _)) = return True
+isSingleton (TBool (BValue _)) = return True
+isSingleton (TUnion t1 t2) = liftM2 (&&) (isSingleton t1) (isSingleton t2)
 isSingleton (TStruct kvps) = case kvps of
-  [] -> True
-  (_, t) : tl -> isSingleton t && isSingleton (TStruct tl)
-isSingleton (TArray n t annotations) = isSingleton t || undefined
-isSingleton _ = False
+  [] -> return True
+  (_, t) : tl -> liftM2 (&&) (isSingleton t) (isSingleton $ TStruct tl)
+isSingleton (TArray n t annotations) = liftM2 (||) (isSingleton t)
+  (fmap (length annotations == n &&) (checkAnnotations $ map snd annotations))
+  where
+    checkAnnotations [] = return True
+    checkAnnotations (id' : tl) = do
+      t' <- findByID id'
+      liftM2 (&&) (isSingleton t') (checkAnnotations tl)
+isSingleton _ = return False
 
 eqType :: ID
 eqType = undefined
@@ -121,8 +128,8 @@ intType = undefined
 boolType :: TypeExpr
 boolType = undefined
 
-unitType :: TypeExpr
-unitType = TUnit
+-- unitType :: TypeExpr
+-- unitType = TUnit
 
 call :: [TypeExpr] -> TypeExpr -> EnvironmentP TypeExpr
 call ids (TMap ps rt) = do

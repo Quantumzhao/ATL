@@ -6,20 +6,28 @@ module Interpreter.Core
   where
 
 import Types
-import Interpreter.Assumptions( Environment , ContextP , doesExist , findByNameM , find )
-import Control.Monad.State( get, modify , evalStateT )
+import Interpreter.Context
+  ( Environment
+  , ProgramState
+  , doesExistVar
+  , findVar
+  , findProc
+  , modifyVars )
+import Control.Monad.State( get, modify , evalStateT , guard )
 import Control.Monad.Except( throwError )
 import Control.Monad ( liftM2 )
 import Data.Functor ( (<&>) )
+import Data.Bifunctor ( second )
+import Data.List (find)
 
 eval :: Environment -> Expr -> Unchecked Value
 eval env expr = evalStateT (evalM expr) env
 
-evalM :: Expr -> ContextP Value
+evalM :: Expr -> ProgramState Value
 evalM (XInt i) = return $ Int i
 evalM (XBool b) = return $ Bool b
-evalM XUnit = return Unit
-evalM (XProc ps b) = return $ Proc ps b
+-- evalM XUnit = return Unit
+-- evalM (XProc ps b) = return $ Proc ps b
 evalM (XAdd e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
@@ -82,19 +90,21 @@ evalM (XStruct s) =
       v <- evalM hd
       vs <- evalS tl
       return $ (name, v) : vs
-evalM (XVar var) = findByNameM var
+evalM (XVar var) = do
+  m <- findVar var
+  case m of
+    Just v -> return v
+    Nothing -> throwError $ var <> " is not declared"
 evalM (XCall fname exprs) = do
-  f <- findByNameM fname
+  m <- findProc fname
   args <- evalArgs exprs
-  case f of
-    Proc params body -> do
-        modify $ \x -> (fname, f) : zip params args <> x
+  case m of
+    Just (_, params, body) -> do
+        modifyVars $ \x -> zip params args <> x
         sig <- executeMany body
         case sig of
           SigBreak -> throwError "function terminated by break statement"
-          SigReturnX x -> return x
-          SigReturn -> return Unit -- invalid when the expr is the right value; 
-                                   -- type checker'll handle this
+          SigReturn x -> return x
           SigContinue -> throwError "Wait that's illegal"
     _ -> throwError $ fname <> " not found"
   where
@@ -104,53 +114,58 @@ evalM (XCall fname exprs) = do
     vs <- evalArgs rest
     return $ v : vs
 
-execute :: Statement -> ContextP Signal
-execute (AssignDefine name expr) = do
-  env <- get
+execute :: Statement -> ProgramState Signal
+execute (SDeclare name) = do
+  b <- doesExistVar name
+  if b then throwError $ name <> " already exists"
+  else modifyVars ((name, Null) :) >> return SigContinue
+execute (SAssign name expr) = do
   v <- evalM expr
-  if doesExist env name then throwError $ name <> " is already defined"
-  else modify ((name, v) :) >> return SigContinue
-execute (Assign name expr) = do
-  env <- get
-  v <- evalM expr
-  if doesExist env name then
-    modify (map (\kvp@(name', _) -> if name' == name then (name, v) else kvp)) >>
+  b <- doesExistVar name
+  if b then
+    modifyVars (map (\kvp@(name', _) -> if name' == name then (name, v) else kvp)) >>
     return SigContinue
   else throwError $ name <> " doesn't exist"
-execute (If c tbranch fbranch) = do
+execute (SNarrow name expr) = do
+  v <- evalM expr
+  b <- doesExistVar name
+  if b then
+    modifyVars (map (\kvp@(name', _) -> if name' == name then (name, v) else kvp)) >>
+    return SigContinue
+  else throwError $ name <> " doesn't exist"
+execute (SIf c tbranch fbranch) = do
   v <- evalM c
   case v of
     Bool b -> if b then executeMany tbranch
               else executeMany fbranch
     _ -> throwError "expect bool; type mismatch in If"
-execute (While c body) = do
+execute (SWhile c body) = do
   v <- evalM c
   case v of
     Bool b -> if b then do
                 sig <- executeMany body
                 case sig of
                   SigBreak -> return SigContinue
-                  SigContinue -> execute (While c body)
+                  SigContinue -> execute (SWhile c body)
                   _ -> return sig
               else return SigContinue
     _ -> throwError "expect bool; type mismatch in While"
-execute (ReturnX x) = evalM x <&> SigReturnX
-execute Return = return SigReturn
-execute Break = return SigBreak
-execute (Impure expr) = evalM expr >> return SigContinue
+execute (SReturn x) = evalM x <&> SigReturn
+execute SBreak = return SigBreak
+execute (SImpure expr) = evalM expr >> return SigContinue
 execute (Switch expr cs) = do
   v <- evalM expr
   checkCases v cs
   where
   checkPattern v ptn = case (v, ptn) of
-    (Int _, ValueP (MatchV mx)) -> evalM mx >>= assert v
-    (Int _, ValueP (BindV i')) -> expand i' v
-    (Bool _, ValueP (MatchV mx)) -> evalM mx >>= assert v
-    (Bool _, ValueP (BindV b')) -> expand b' v
-    (Unit, ValueP (MatchV mx)) -> evalM mx >>= assert v
-    (Unit, ValueP (BindV u')) -> expand u' v
-    (Struct kvps, RecordP rps) -> checkRecord kvps rps
-    (Array a, ArrayP aps) -> checkArray a aps
+    (Int _, PValue (MatchV mx)) -> evalM mx >>= assert v
+    (Int _, PValue (BindV i')) -> expand i' v
+    (Bool _, PValue (MatchV mx)) -> evalM mx >>= assert v
+    (Bool _, PValue (BindV b')) -> expand b' v
+    -- (Unit, PValue (MatchV mx)) -> evalM mx >>= assert v
+    -- (Unit, PValue (BindV u')) -> expand u' v
+    (Struct kvps, PStruct rps) -> checkRecord kvps rps
+    (Array a, PArray aps) -> checkArray a aps
     _ -> return False
   checkCases _ [] = return SigContinue
   checkCases v ((ptn, body) : rest) = do
@@ -158,8 +173,8 @@ execute (Switch expr cs) = do
     if b then executeMany body
     else checkCases v rest
   checkRecord kvps ((key, ptn) : rest) =
-    case find kvps (\kvp -> fst kvp == key) of
-      Just v -> liftM2 (&&) (checkPattern v ptn) (checkRecord kvps rest)
+    case find (\kvp -> fst kvp == key) kvps of
+      Just (_, v) -> liftM2 (&&) (checkPattern v ptn) (checkRecord kvps rest)
       Nothing -> return False
   checkRecord _ [] = return False
   checkArray [] EmptyA = return True
@@ -171,12 +186,13 @@ execute (Switch expr cs) = do
     if res then checkArray rest as
     else checkArray rest sa
   checkArray _ _ = return False
-  expand :: Variable -> Value -> ContextP Bool
-  expand name v = modify ((name, v) :) >> return True
+  expand :: Variable -> Value -> ProgramState Bool
+  expand name v = modifyVars ((name, v) :) >> return True
   assert value match = return (value == match)
+execute (SProcedure p) = modify (second (p :)) >> return SigContinue
 
-executeMany :: [Statement] -> ContextP Signal
-executeMany [] = return SigReturn
+executeMany :: [Statement] -> ProgramState Signal
+executeMany [] = return $ SigReturn Null
 executeMany (stmt : rest) = do
   sig <- execute stmt
   case sig of
