@@ -21,3 +21,22 @@ eval := (e,  env) => {
         }
     }
 }
+
+x = someFunc(); // x : X, ⊥ ⊆ X ⊆ ⊤, x.a = 0
+b = someBool; // b : Bool
+var y;
+
+if (b) {
+    y = true;
+} else {
+    y = x;
+}
+// y : {x} ∪ {true}
+
+x.a = 1;
+if (y.a == 0) {
+    // ...
+}
+
+x = 3
+

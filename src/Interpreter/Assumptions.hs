@@ -9,7 +9,7 @@ module Interpreter.Assumptions
 
 import Control.Monad.State ( StateT , get )
 import Control.Monad.Except ( throwError )
-import Interpreter.Types
+import Types
 
 type KeyValuePair = (Variable, Value)
 type Environment = [KeyValuePair]

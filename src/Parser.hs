@@ -16,8 +16,9 @@ import Text.Megaparsec
 import Text.Megaparsec.Char ( char, string )
 import Data.Void ( Void )
 import Data.Char ( isAlphaNum , isDigit )
-import Interpreter.Types
+import Types
 import Control.Monad ( void )
+import Data.Functor ( ($>) )
 
 type Parser = Parsec Void String
 
@@ -31,16 +32,16 @@ parseValidSymbol :: Parser String
 parseValidSymbol = some symbolChars
 
 parseInt :: Parser Expr
-parseInt = (Literal . Int . read) <$> ((++) <$> string "-" <*> some digit <|> some digit)
+parseInt = XInt . read <$> ((++) <$> string "-" <*> some digit <|> some digit)
 
 parseBool :: Parser Expr
-parseBool = (Literal . Bool . read) <$> choice [string "true", string "false"]
+parseBool = XBool . read <$> choice [string "true", string "false"]
 
 colon :: Parser Char
 colon = char ';'
 
 parseUnit :: Parser Expr
-parseUnit = string "()" *> (pure $ Literal Unit)
+parseUnit = string "()" $> XUnit
 
 parseManySep :: Parser a -> Parser [a]
 parseManySep p = try (do
@@ -50,13 +51,13 @@ parseManySep p = try (do
   <|> pure []
 
 parseArray :: Parser Expr
-parseArray = ArrayExpr <$> (char '[' *> parseManySep parseExpr <* char ']')
+parseArray = XArray <$> (char '[' *> parseManySep parseExpr <* char ']')
 
 parseParen :: Parser Expr
 parseParen = char '(' *> parseExpr <* char ')'
 
 parseRecord :: Parser Expr
-parseRecord = RecordExpr <$> (char '{' *> parseManySep parseKvp <* char '}')
+parseRecord = XStruct <$> (char '{' *> parseManySep parseKvp <* char '}')
   where
     parseKvp = do
       key <- parseValidSymbol
@@ -65,7 +66,7 @@ parseRecord = RecordExpr <$> (char '{' *> parseManySep parseKvp <* char '}')
       return (key, value)
 
 parseVariable :: Parser Expr
-parseVariable = Variable <$> parseValidSymbol
+parseVariable = XVar <$> parseValidSymbol
 
 parseCall :: Parser Expr
 parseCall = do
@@ -73,7 +74,7 @@ parseCall = do
   void $ char '('
   exprs <- parseManySep parseExpr
   void $ char ')'
-  return $ Call fname exprs
+  return $ XCall fname exprs
 
 parseExpr :: Parser Expr
 parseExpr = choice
@@ -90,8 +91,7 @@ parseAssign = do
   void $ string "var"
   var <- parseValidSymbol
   void $ char '='
-  expr <- parseExpr
-  return $ AssignDefine var expr
+  AssignDefine var <$> parseExpr
 
 parseBlock :: Parser [Statement]
 parseBlock = char '{' *> parseStatements <* char '}'
@@ -101,15 +101,13 @@ parseIf = do
   void $ string "if"
   c <- parseParen
   t <- parseBlock
-  f <- parseBlock
-  return $ If c t f
+  If c t <$> parseBlock
 
 parseWhile :: Parser Statement
 parseWhile = do
   void $ string "while"
   c <- parseParen
-  l <- parseBlock
-  return $ While c l
+  While c <$> parseBlock
 
 parseSwitch :: Parser Statement
 parseSwitch = do
@@ -127,16 +125,16 @@ parseReturnX :: Parser Statement
 parseReturnX = ReturnX <$> (string "return" *> parseExpr <* colon)
 
 parseReturn :: Parser Statement
-parseReturn = string "return" *> pure Return <* colon
+parseReturn = (string "return" $> Return) <* colon
 
 parseBreak :: Parser Statement
-parseBreak = string "break" *> pure Break <* colon
+parseBreak = (string "break" $> Break) <* colon
 
 parseImpure :: Parser Statement
 parseImpure = Impure <$> parseExpr <* colon
 
 parseStatement :: Parser Statement
-parseStatement = choice 
+parseStatement = choice
   [ try parseAssign
   , try parseIf
   , try parseWhile

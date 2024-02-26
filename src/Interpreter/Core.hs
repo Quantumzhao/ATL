@@ -5,95 +5,90 @@ module Interpreter.Core
   , executeMany )
   where
 
-import Interpreter.Types
+import Types
 import Interpreter.Assumptions( Environment , ContextP , doesExist , findByNameM , find )
 import Control.Monad.State( get, modify , evalStateT )
 import Control.Monad.Except( throwError )
 import Control.Monad ( liftM2 )
+import Data.Functor ( (<&>) )
 
 eval :: Environment -> Expr -> Unchecked Value
 eval env expr = evalStateT (evalM expr) env
 
 evalM :: Expr -> ContextP Value
-evalM (Literal l) = return l
-evalM (Add e1 e2) = do
+evalM (XInt i) = return $ Int i
+evalM (XBool b) = return $ Bool b
+evalM XUnit = return Unit
+evalM (XProc ps b) = return $ Proc ps b
+evalM (XAdd e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
   case (v1, v2) of
     (Int i1, Int i2) -> return $ Int $ i1 + i2
     (_, _) -> throwError "type error: Add"
-evalM (Subtract e1 e2) = do
+evalM (XSub e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
   case (v1, v2) of
     (Int i1, Int i2) -> return $ Int $ i1 - i2
     (_, _) -> throwError "type error: Subtract"
-evalM (Not e) = do
+evalM (XNot e) = do
   v <- evalM e
   case v of
     (Bool b) -> return $ Bool $ not b
     _ -> throwError "type error: Not"
-evalM (Or e1 e2) = do
+evalM (XOr e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
   case (v1, v2) of
     (Bool b1, Bool b2) -> return $ Bool $ b1 || b2
     (_, _) -> throwError "type error: Or"
-evalM (And e1 e2) = do
+evalM (XAnd e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
   case (v1, v2) of
     (Bool b1, Bool b2) -> return $ Bool $ b1 && b2
     (_, _) -> throwError "type error: And"
-evalM (Equal e1 e2) = do
+evalM (XEqual e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
   return $ Bool $ v1 == v2
-evalM (GreaterThan e1 e2) = do
+evalM (XGt e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
   case (v1, v2) of
     (Int i1, Int i2) -> return $ Bool $ i1 > i2
     (_, _) -> throwError "type error: GreaterThan"
-evalM (LessThan e1 e2) = do
+evalM (XLt e1 e2) = do
   v1 <- evalM e1
   v2 <- evalM e2
   case (v1, v2) of
     (Int i1, Int i2) -> return $ Bool $ i1 > i2
     (_, _) -> throwError "type error: GreaterThan"
-evalM (ArrayExpr as) = do
+evalM (XArray as) = do
   vs <- evalArr as
-  return $ Array $ vs
+  return $ Array vs
   where
     evalArr [] = return []
     evalArr (hd : tl) = do
       v <- evalM hd
       vs <- evalArr tl
       return $ v : vs
--- evalM (LinkedListExpr ls) = do
---     vs <- evalLL ls
---     return $ LinkedList $ vs
---     where
---         evalLL [] = return []
---         evalLL (hd : tl) = do
---             v <- evalM hd
---             vs <- evalLL tl
---             return $ v : vs
-evalM (RecordExpr s) = 
-  evalS s >>= return . Record
+evalM (XStruct s) =
+  evalS s <&> Struct
   where
     evalS [] = return []
     evalS ((name, hd) : tl) = do
       v <- evalM hd
       vs <- evalS tl
       return $ (name, v) : vs
-evalM (Variable var) = findByNameM var
-evalM (Call fname exprs) = do
+evalM (XVar var) = findByNameM var
+evalM (XCall fname exprs) = do
   f <- findByNameM fname
   args <- evalArgs exprs
   case f of
-    Function params body -> do
-        modify $ \x -> (fname, f) : (zip params args) <> x
+    Proc params body -> do
+        modify $ \x -> (fname, f) : zip params args <> x
         sig <- executeMany body
         case sig of
           SigBreak -> throwError "function terminated by break statement"
@@ -139,7 +134,7 @@ execute (While c body) = do
                   _ -> return sig
               else return SigContinue
     _ -> throwError "expect bool; type mismatch in While"
-execute (ReturnX x) = (evalM x) >>= return . SigReturnX
+execute (ReturnX x) = evalM x <&> SigReturnX
 execute Return = return SigReturn
 execute Break = return SigBreak
 execute (Impure expr) = evalM expr >> return SigContinue
@@ -154,15 +149,15 @@ execute (Switch expr cs) = do
     (Bool _, ValueP (BindV b')) -> expand b' v
     (Unit, ValueP (MatchV mx)) -> evalM mx >>= assert v
     (Unit, ValueP (BindV u')) -> expand u' v
-    (Record kvps, RecordP rps) -> checkRecord kvps rps
+    (Struct kvps, RecordP rps) -> checkRecord kvps rps
     (Array a, ArrayP aps) -> checkArray a aps
     _ -> return False
   checkCases _ [] = return SigContinue
   checkCases v ((ptn, body) : rest) = do
     b <- checkPattern v ptn
     if b then executeMany body
-    else checkCases v rest 
-  checkRecord kvps ((key, ptn) : rest) = 
+    else checkCases v rest
+  checkRecord kvps ((key, ptn) : rest) =
     case find kvps (\kvp -> fst kvp == key) of
       Just v -> liftM2 (&&) (checkPattern v ptn) (checkRecord kvps rest)
       Nothing -> return False
@@ -178,7 +173,7 @@ execute (Switch expr cs) = do
   checkArray _ _ = return False
   expand :: Variable -> Value -> ContextP Bool
   expand name v = modify ((name, v) :) >> return True
-  assert value match = return $ (value == match)
+  assert value match = return (value == match)
 
 executeMany :: [Statement] -> ContextP Signal
 executeMany [] = return SigReturn

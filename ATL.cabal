@@ -27,8 +27,11 @@ library
   exposed-modules:
       Interpreter.Assumptions
       Interpreter.Core
-      Interpreter.Types
       Parser
+      TypeChecker.Core
+      TypeChecker.Rules
+      TypeChecker.TypingContext
+      Types
   other-modules:
       Paths_ATL
   autogen-modules:
