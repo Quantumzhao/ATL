@@ -25,6 +25,7 @@ dependencies:
 # - utility-ht >= 0.0
 - containers >= 0.0
 - megaparsec >= 0.0
+- extra >= 0.0
 
 ghc-options:
 - -Wall

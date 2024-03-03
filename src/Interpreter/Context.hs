@@ -7,10 +7,11 @@ module Interpreter.Context
   , findVar'
   , findProc
   , doesExistVar
-  , modifyVars )
+  , modifyVars
+  , discardClosure )
   where
 
-import Control.Monad.State ( StateT , gets , modify )
+import Control.Monad.State ( StateT , gets , get , put , modify )
 -- import Control.Monad.Except ( throwError )
 import Types
 import Data.List ( find )
@@ -46,3 +47,10 @@ findProc name = find (\(name', _, _) -> name == name') <$> getProcs
 
 doesExistVar :: Variable -> ProgramState Bool
 doesExistVar name = foldl (\a (var, _) -> (var == name) || a) False <$> getVars
+
+discardClosure :: ProgramState a -> ProgramState a
+discardClosure m = do
+  env <- get
+  v <- m
+  put env
+  return v

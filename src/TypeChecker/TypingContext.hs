@@ -4,11 +4,13 @@ module TypeChecker.TypingContext
   ( Context
   , EnvironmentP
   , ID
-  , findByID
   , findM
   , findByNameM
-  , findType
-  , findLub
+  , findByID
+  , tryFindID
+  , findTypeID
+  , intersect
+  , union
   , doesExist
   , equals
   , genId
@@ -19,6 +21,7 @@ module TypeChecker.TypingContext
   , isConnected
   , tryUpdateDAG
   , tryUpdateDAGMany
+  , setVarToTypeID
   , strictlyGt )
   where
 
@@ -89,14 +92,23 @@ findByNameM name = findM $ \x -> fst x == name
 findLub :: [ID] -> EnvironmentP ID
 findLub = undefined
 
+findGlb :: [ID] -> EnvironmentP ID
+findGlb = undefined
+
+intersect :: [ID] -> EnvironmentP ID
+intersect = undefined
+
+union :: [ID] -> EnvironmentP ID
+union = undefined
+
 strictlyGt :: ID -> ID -> EnvironmentP Bool
 strictlyGt = undefined
 
 doesExist :: Context -> Variable -> Bool
 doesExist env name = foldl (\a (var, _) -> (var == name) || a) False env
 
-findType :: Variable -> EnvironmentP ID
-findType = undefined
+tryFindID :: Variable -> EnvironmentP (Maybe ID)
+tryFindID = undefined
 
 -- if type is unique, i.e. ∀ t' ∈ G, t' != t, success and return a new ID
 -- otherwise returns the existing type ID
@@ -110,6 +122,11 @@ tryUpdateDAGMany (x : xs) = do
   xs' <- tryUpdateDAGMany xs
   return (x' : xs')
 
-
 findByID :: ID -> EnvironmentP TypeExpr
 findByID id = undefined
+
+findTypeID :: Variable -> EnvironmentP ID
+findTypeID = undefined
+
+setVarToTypeID :: Variable -> ID -> EnvironmentP ()
+setVarToTypeID = undefined

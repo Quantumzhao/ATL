@@ -104,3 +104,120 @@ var x; // x : ⊤
 sum(x); // not ok, ⊤ is not a subtype of Tree
 ```
 
+Var
+
+
+$$
+\def\glb{\mathrm{glb}}
+\begin{prooftree}
+\AxiomC{}
+\UnaryInfC{$A\cup\{x\mapsto\tau\},\ C\vdash x:\tau$}
+\end{prooftree}
+$$
+Indexed Var
+$$
+\begin{prooftree}
+\AxiomC{$A,\ C\vdash x:\tau=\langle\tau,\ n,\ \ldots\tau_i\ldots\rangle,\ i:\tau_i\subseteq\Z$}
+\UnaryInfC{$A,\ C\cup\overline{C_i}\vdash x[i]:\tau_i,\quad i:\tau_i\cap[0,n)$}
+\end{prooftree}
+$$
+Projected Var
+$$
+\begin{prooftree}
+\AxiomC{$A,\ C\vdash x:\tau\cup\{x.y\mapsto\tau'\}$}
+\UnaryInfC{$A,\ C\cup\overline{C_y}\vdash x.y:\tau'$}
+\end{prooftree}
+\quad
+\begin{prooftree}
+\AxiomC{$A,\ C\vdash x:\tau$}
+\UnaryInfC{$A,\ C\vdash x.y:\top,\quad x:\tau\cap\{x.y\mapsto\tau'\}$}
+\end{prooftree}
+$$
+
+---
+
+Struct
+$$
+\begin{prooftree}
+\AxiomC{$A,C \vdash e_1:\tau_1,\ \ldots,\ e_n:\tau_n$}
+\UnaryInfC{$A,C \vdash c(e_1,\ \ldots,\ e_n):c(\tau_1,\ \ldots,\ \tau_n)$}
+\end{prooftree}
+$$
+---
+
+Array 1
+$$
+\def\lub{\mathrm{lub}}
+\begin{prooftree}
+\AxiomC{$A,\ C\vdash e_1:\tau_1,\ \ldots,\ e_n:\tau_n$}
+\UnaryInfC{$A,\ C\cup\overline{C_{i}}\vdash [e_1,\ \ldots,\ e_n]:\langle \tau,\ n,\ \overline{\tau_i}\rangle$}
+\end{prooftree}
+$$
+where
+
+- $\overline{C_{i}}$ are all the constraints that are related to $e_i$, but substitute $e_i$ for indexed variables. If $e_i$ is not a normal form value, nothing happens
+- $\tau:\underset{i}\lub(\tau_i)$​
+- $\overline{\tau_i}$ are all the $\tau_i$ that are proper subtypes of $\tau$​
+
+Array 2
+$$
+\begin{prooftree}
+\AxiomC{$A,\ C\vdash e:\tau_e$}
+\UnaryInfC{$A,\ C\vdash \tau[e]:\langle \tau,\ n,\ \empty\rangle,\quad e:\tau_e'=\glb(\tau_e,\Z),\quad n=\max\tau_e'$}
+\end{prooftree}
+$$
+
+---
+
+Declare
+$$
+\begin{prooftree}
+\AxiomC{$A,C \vdash x:\tau$}
+\UnaryInfC{$A,C \vdash \tau\ x:\circ$}
+\end{prooftree}
+$$
+---
+
+Assign
+$$
+\begin{prooftree}
+\AxiomC{$A,C\cup \overline{C_x}\vdash x:\tau_x,\ e:\tau_e$}
+\UnaryInfC{$A,\ C\vdash x:=e:\circ,\quad x,e:\glb(\tau_x,\tau_e)$}
+\end{prooftree}
+$$
+---
+
+Abstraction
+$$
+\begin{prooftree}
+\AxiomC{$A\cup\{x_1\mapsto\tau_1,\ldots,x_n\mapsto\tau_n,f\mapsto\tau_f\},\ C\vdash e:\tau_e$}
+\UnaryInfC{$A,\ C\vdash\tau_f\ f(x_1,\ldots x_n)\rightarrow e:\circ,\quad\tau_f=((\tau_1,\ldots,\tau_n)\rightarrow\tau_e)$}
+\end{prooftree}
+$$
+---
+
+If
+$$
+\begin{prooftree}
+\AxiomC{$$}
+\UnaryInfC{$A,\ C\vdash \mathtt{if}(e_b)\ e_t\ \mathtt{else}\ e_f:\circ$}
+\end{prooftree}
+$$
+
+
+While
+
+Apply
+$$
+\begin{prooftree}
+\AxiomC{$A,\ C\vdash f:\tau_f,e_1:\tau_1,\ldots,e_n:\tau_n$}
+\UnaryInfC{$A,\ C\vdash f(e_1,\ldots,e_n):\beta,\quad\tau_f=\alpha_1,\ldots,\alpha_n\rightarrow\alpha,\quad\beta\subseteq\alpha,\quad\tau_1\subseteq\alpha_1,\ldots,\tau_n\subseteq\alpha_n$}
+\end{prooftree}
+$$
+Pattern Matching
+$$
+\begin{prooftree}
+\AxiomC{$$}
+\UnaryInfC{$A,\ C\vdash(\mathtt{switch}\ (e)\ p_1\rightarrow b_1;\ldots;p_n\rightarrow b_n):\circ$}
+\end{prooftree}
+$$

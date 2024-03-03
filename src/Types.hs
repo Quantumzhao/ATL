@@ -41,12 +41,12 @@ data Expr = XEqual Expr Expr
           | XSub Expr Expr
           | XInt Int
           | XBool Bool
-          -- | XNull
-          -- | XProc [Variable] [Statement]
           | XArray [Expr]
           | XStruct [(Variable, Expr)]
           | XVar Variable
           | XCall Variable [Expr]
+          | XProj Expr Variable
+          | XIndex Expr Expr
 data ValuePattern = MatchV Expr
                   | BindV Variable
 data ArrayPattern = EmptyA
@@ -61,27 +61,26 @@ data Pattern = PValue ValuePattern
              | PStruct [RecordEntryPattern]
              | PWildcard
 data Statement = SAssign Variable Expr
-               | SNarrow Variable Expr
-               | SDeclare Variable
                | SIf Expr [Statement] [Statement]
                | SWhile Expr [Statement]
-               | Switch Expr [CaseClause]
+               | SSwitch Expr [CaseClause]
                | SReturn Expr
                | SBreak
                | SImpure Expr
                | SProcedure Procedure
-data TypeExpr = TUnion TypeExpr TypeExpr
+data TypeExpr = TUnion ID ID
               | TInt TypeInt
               | TBool TypeBool
-              | TArray Int TypeExpr [(Index, ID)]
-              | TStruct [(Variable, TypeExpr)]
-              | TVar Variable
+              | TArray Int ID [(Index, ID)]
+              | TStruct [(Variable, ID)]
+              -- | TVar Variable
               | TTop
               | TBottom
               | TNull
-              | TMap [TypeExpr] TypeExpr
+              | TMap [ID] ID
 data TypeInt = IInteger
-             | IRange Expr Expr
+             | IRange Int Int
+             | IUnion TypeInt TypeInt -- a shorthand for TUnion when dealing with integers
              | INumber Int
 data TypeBool = BBool
               | BValue Bool

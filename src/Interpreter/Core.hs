@@ -12,13 +12,14 @@ import Interpreter.Context
   , doesExistVar
   , findVar
   , findProc
-  , modifyVars )
-import Control.Monad.State( get, modify , evalStateT , guard )
+  , modifyVars, discardClosure )
+import Control.Monad.State( get , put , modify , evalStateT , guard )
 import Control.Monad.Except( throwError )
 import Control.Monad ( liftM2 )
 import Data.Functor ( (<&>) )
 import Data.Bifunctor ( second )
 import Data.List (find)
+import Data.List.Extra ( (!?) )
 
 eval :: Environment -> Expr -> Unchecked Value
 eval env expr = evalStateT (evalM expr) env
@@ -95,6 +96,21 @@ evalM (XVar var) = do
   case m of
     Just v -> return v
     Nothing -> throwError $ var <> " is not declared"
+evalM (XProj var1 var2) = do
+  var1' <- evalM var1
+  case var1' of
+    Struct kvps -> case find ((var2 ==) . fst) kvps of
+                     Just (k, v) -> return v
+                     Nothing -> throwError " field not found "
+    _ -> throwError "not a struct"
+evalM (XIndex var i) = do
+  var' <- evalM var
+  i' <- evalM i
+  case (var', i') of
+    (Array vs, Int i'') -> case vs !? i'' of
+                             Just v -> return v
+                             Nothing -> throwError "index out of bound"
+    _ -> throwError "type mismatch"
 evalM (XCall fname exprs) = do
   m <- findProc fname
   args <- evalArgs exprs
@@ -115,29 +131,19 @@ evalM (XCall fname exprs) = do
     return $ v : vs
 
 execute :: Statement -> ProgramState Signal
-execute (SDeclare name) = do
-  b <- doesExistVar name
-  if b then throwError $ name <> " already exists"
-  else modifyVars ((name, Null) :) >> return SigContinue
 execute (SAssign name expr) = do
   v <- evalM expr
   b <- doesExistVar name
   if b then
     modifyVars (map (\kvp@(name', _) -> if name' == name then (name, v) else kvp)) >>
     return SigContinue
-  else throwError $ name <> " doesn't exist"
-execute (SNarrow name expr) = do
-  v <- evalM expr
-  b <- doesExistVar name
-  if b then
-    modifyVars (map (\kvp@(name', _) -> if name' == name then (name, v) else kvp)) >>
-    return SigContinue
-  else throwError $ name <> " doesn't exist"
+  else modifyVars ((name, v) :) >> return SigContinue
 execute (SIf c tbranch fbranch) = do
   v <- evalM c
+  env <- get
   case v of
-    Bool b -> if b then executeMany tbranch
-              else executeMany fbranch
+    Bool b -> if b then do discardClosure $ executeMany tbranch
+              else discardClosure $ executeMany fbranch
     _ -> throwError "expect bool; type mismatch in If"
 execute (SWhile c body) = do
   v <- evalM c
@@ -153,7 +159,7 @@ execute (SWhile c body) = do
 execute (SReturn x) = evalM x <&> SigReturn
 execute SBreak = return SigBreak
 execute (SImpure expr) = evalM expr >> return SigContinue
-execute (Switch expr cs) = do
+execute (SSwitch expr cs) = do
   v <- evalM expr
   checkCases v cs
   where

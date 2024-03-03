@@ -40,3 +40,25 @@ if (y.a == 0) {
 
 x = 3
 
+eval(expr) {                             // expr : X ⊆ int ∪ bool ∪ Ad ∪ An ∪ E ∪ I
+    switch(expr) {                       // eval : X -> int ∪ bool
+        case int i:                      // i : int
+            return i;
+        case bool b:                     // b : bool
+            return b;
+        case ('Add, e1, e2):             // ('Add, e1, e2) : Ad ⊆ ⟨⊤[3], [[1] : 'Add, [2] : X, [3] : X]⟩
+            return eval(e1) + eval(e2);
+        case ('And, e1, e2):             
+            return eval(e1) && eval(e2); // ('And, e1, e2) : An ⊆ ⟨⊤[3], [[1] : 'And, [2] : X, [3] : X]⟩
+        case ('Eq0, e):
+            return eval(e) == 0;
+        case ('If, b, e1, e2):
+            var b' = eval(b);
+            if (b') {
+                return eval(e1);
+            } else {
+                return eval(e2);
+            }
+    }
+}
+
