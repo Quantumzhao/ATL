@@ -27,7 +27,7 @@ Now even without type declaration, we know there must exist a type that is inhab
 
 ---
 
-Another Example (syntax is modified for demonstration):
+Another Example:
 
 ```
 sum(tree) {
@@ -42,86 +42,31 @@ sum(tree) {
 
 The variable `tree` has type `Tree = {'Leaf} ∪ Branch` where `Branch =  {'Branch} × Tree × Tree`
 
-## Singleton Type
 
-As you can see, types in this type system is very different from a typical one. Specifically, to make the language concise and useful, it must introduce the Singleton Type, which is constructed from an expression. If we consider a type to be a special set, then the Singleton Type is inhabited by only one member, denoted as `{x}` where `x` is the said member.
-
-The quirk about this type is that it is dependent on `x`, and `x` can be any expression that has a type. For example:
-
-- `{1}` is a type containing only `1`. It is a subtype of `int`
-
-- `{a}` where is a singleton type of unknown variable `a`. What it means is that, suppose (syntax is modified for demonstration):
-
-  ```
-  x = a; // x : {a}
-  x = 2; // type error, there is no guarantee that a == 2
-  ```
-
-How can we intentionally break this type system? Let’s say 
-
-```
-a = 2 // a : A = [1, 2]
-x = a; // x : X = {a}
-a = 1;
-```
-
-But `x` still has value of 2. `x : {a}` implies that the only value that `x` can take is `a`, thus `x == a` is always true, which raises a contradiction.
-
-To resolve this, we need to introduce the concept of immutable types.
-
-## Immutable Type
-
-To avoid the conflict mentioned above, we restrict the singleton types to accept only immutable types. 
-
-The syntax is:
-
-```
-var! x = ...; // x is the type of anything that is immutable
-int! x = ...; // x is the type of immutable int
-```
-
-How do we break it?
-
-```
-x = {a: 1, b: 2} // x : {a: int, b: int}
-y = x // 
-```
-
-
-
-
-
-
-
-It's worth mentioning that, the type `Tree` is inferred by the type checker, rather than defined.
-In ATL, programs can't define types; but rather types are inferred by the values that inhabitates.
-
-Since the type `Sum` doesn't contain any quantifiers, it is regarded as a fact. Thus, if the
-following code tries to pass in an incompatible type, it will complain:
-
-```
-var x; // x : ⊤
-sum(x); // not ok, ⊤ is not a subtype of Tree
-```
 
 Var
 
 
 $$
 \def\glb{\mathrm{glb}}
+\def\bool{\mathrm{bool}}
 \begin{prooftree}
 \AxiomC{}
 \UnaryInfC{$A\cup\{x\mapsto\tau\},\ C\vdash x:\tau$}
 \end{prooftree}
 $$
+
 Indexed Var
+
 $$
 \begin{prooftree}
 \AxiomC{$A,\ C\vdash x:\tau=\langle\tau,\ n,\ \ldots\tau_i\ldots\rangle,\ i:\tau_i\subseteq\Z$}
 \UnaryInfC{$A,\ C\cup\overline{C_i}\vdash x[i]:\tau_i,\quad i:\tau_i\cap[0,n)$}
 \end{prooftree}
 $$
+
 Projected Var
+
 $$
 \begin{prooftree}
 \AxiomC{$A,\ C\vdash x:\tau\cup\{x.y\mapsto\tau'\}$}
@@ -153,13 +98,15 @@ $$
 \UnaryInfC{$A,\ C\cup\overline{C_{i}}\vdash [e_1,\ \ldots,\ e_n]:\langle \tau,\ n,\ \overline{\tau_i}\rangle$}
 \end{prooftree}
 $$
+
 where
 
 - $\overline{C_{i}}$ are all the constraints that are related to $e_i$, but substitute $e_i$ for indexed variables. If $e_i$ is not a normal form value, nothing happens
 - $\tau:\underset{i}\lub(\tau_i)$​
-- $\overline{\tau_i}$ are all the $\tau_i$ that are proper subtypes of $\tau$​
+- $\overline{\tau_i}$ are all the $\tau_i$ that are proper subtypes of $\tau$
 
 Array 2
+
 $$
 \begin{prooftree}
 \AxiomC{$A,\ C\vdash e:\tau_e$}
@@ -169,55 +116,64 @@ $$
 
 ---
 
-Declare
-$$
-\begin{prooftree}
-\AxiomC{$A,C \vdash x:\tau$}
-\UnaryInfC{$A,C \vdash \tau\ x:\circ$}
-\end{prooftree}
-$$
----
-
 Assign
 $$
 \begin{prooftree}
-\AxiomC{$A,C\cup \overline{C_x}\vdash x:\tau_x,\ e:\tau_e$}
-\UnaryInfC{$A,\ C\vdash x:=e:\circ,\quad x,e:\glb(\tau_x,\tau_e)$}
+\AxiomC{$A,\ C\vdash e:\tau$}
+\AxiomC{$A\cup\{x\mapsto\tau\},C\vdash x:\tau$}
+\BinaryInfC{$A,\ C-\overline{C_x}\vdash x=e:\circ,\quad x:\tau$}
 \end{prooftree}
 $$
+
 ---
 
 Abstraction
+
 $$
 \begin{prooftree}
 \AxiomC{$A\cup\{x_1\mapsto\tau_1,\ldots,x_n\mapsto\tau_n,f\mapsto\tau_f\},\ C\vdash e:\tau_e$}
 \UnaryInfC{$A,\ C\vdash\tau_f\ f(x_1,\ldots x_n)\rightarrow e:\circ,\quad\tau_f=((\tau_1,\ldots,\tau_n)\rightarrow\tau_e)$}
 \end{prooftree}
 $$
+
 ---
 
 If
+
 $$
 \begin{prooftree}
-\AxiomC{$$}
+\AxiomC{$A,\ C\vdash e_b:\bool,\quad$}
 \UnaryInfC{$A,\ C\vdash \mathtt{if}(e_b)\ e_t\ \mathtt{else}\ e_f:\circ$}
 \end{prooftree}
 $$
 
+- $e_b$ introduces constraints between terms
+- terms which types are updated in $e_t$ and $e_f$ receive a new union type after the `if` statement
 
 While
 
+- same as `if`
+- in addition, all terms that receive updated types must has a subtype of what they begin with
+
 Apply
+
 $$
 \begin{prooftree}
 \AxiomC{$A,\ C\vdash f:\tau_f,e_1:\tau_1,\ldots,e_n:\tau_n$}
 \UnaryInfC{$A,\ C\vdash f(e_1,\ldots,e_n):\beta,\quad\tau_f=\alpha_1,\ldots,\alpha_n\rightarrow\alpha,\quad\beta\subseteq\alpha,\quad\tau_1\subseteq\alpha_1,\ldots,\tau_n\subseteq\alpha_n$}
 \end{prooftree}
 $$
+
 Pattern Matching
+
 $$
 \begin{prooftree}
-\AxiomC{$$}
+\AxiomC{$
+\begin{gather}
+A\cup\{v\mapsto\tau_v|v\in Var(p_1)\},\ C\vdash p_1:\alpha_1,\ b_1:\beta_1\\
+\vdots\\
+A,\ C\vdash e:\tau,\ C_e\quad A\cup\{v\mapsto\tau_v|v\in Var(p_n)\}\vdash p_n:\alpha_n,\ b_n:\beta_n
+\end{gather}$}
 \UnaryInfC{$A,\ C\vdash(\mathtt{switch}\ (e)\ p_1\rightarrow b_1;\ldots;p_n\rightarrow b_n):\circ$}
 \end{prooftree}
 $$
