@@ -2,6 +2,7 @@ module Interpreter.Context
   ( Environment
   , ProgramState
   , getVars
+  , putVars
   , getProcs
   , findVar
   , findVar'
@@ -29,6 +30,11 @@ type ProgramState = StateT Environment Unchecked
 
 getVars :: ProgramState [KeyValuePair]
 getVars = gets fst
+
+putVars :: [KeyValuePair] -> ProgramState ()
+putVars vars = do
+  (_, ps) <- get
+  put (vars, ps)
 
 modifyVars :: ([KeyValuePair] -> [KeyValuePair]) -> ProgramState ()
 modifyVars f = modify (first f)

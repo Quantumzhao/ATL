@@ -1,64 +1,16 @@
-eval := (e,  env) => {
-    switch (e) {
-    case (int i):
-        return i;
-    case (`Add, i1, i2):
-        return eval i1 env + eval i2 env;
-    case (`Var, name):
-        switch (env::find(name)) {
-            case (`Fun, _, _, _):
-                return 0;
-            case (int i):
-                return i;
-        }
-    case (`App, fname, args):
-        switch (env::find(fname)) {
-            case (`Fun, fname, ps, body):
-                env = env::prepend(zip(ps, args));
-                return eval(body, env)
-            case _:
-                return 0;
-        }
-    }
+x = scanf();
+y = int[x];
+if (x < 2) {
+    
 }
 
-x = someFunc(); // x : X, ⊥ ⊆ X ⊆ ⊤, x.a = 0
-b = someBool; // b : Bool
-var y;
+\v2 -> T2 ((\v1 -> T1 ((\v0 -> T0 v0) v1)) v2)
 
-if (b) {
-    y = true;
-} else {
-    y = x;
-}
-// y : {x} ∪ {true}
-
-x.a = 1;
-if (y.a == 0) {
-    // ...
-}
-
-x = 3
-
-eval(expr) {                             // expr : X ⊆ int ∪ bool ∪ Ad ∪ An ∪ E ∪ I
-    switch(expr) {                       // eval : X -> int ∪ bool
-        case int i:                      // i : int
-            return i;
-        case bool b:                     // b : bool
-            return b;
-        case ('Add, e1, e2):             // ('Add, e1, e2) : Ad ⊆ ⟨⊤[3], [[1] : 'Add, [2] : X, [3] : X]⟩
-            return eval(e1) + eval(e2);
-        case ('And, e1, e2):             
-            return eval(e1) && eval(e2); // ('And, e1, e2) : An ⊆ ⟨⊤[3], [[1] : 'And, [2] : X, [3] : X]⟩
-        case ('Eq0, e):
-            return eval(e) == 0;
-        case ('If, b, e1, e2):
-            var b' = eval(b);
-            if (b') {
-                return eval(e1);
-            } else {
-                return eval(e2);
-            }
-    }
-}
-
+substitute path f_subst =
+    case path of
+        Symbol name -> \v ->
+            f_subst (\env v -> env[name/v])
+        Index path' i -> \v ->
+            subst_ed = substitute path' (\domain v -> domain[i/v])
+            f_subst (subst_ed v)
+        Proj path' k ->

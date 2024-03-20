@@ -1,6 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module TypeChecker.Rules
 ( inferTypeOf
@@ -15,10 +15,6 @@ import Control.Monad ( liftM2 , guard , when )
 import Data.List ( find )
 import Prelude hiding ( id )
 
--- toTypeBool :: Bool -> TypeBool
--- toTypeBool True = TypeTrue
--- toTypeBool False = TypeFalse
-
 inferTypeOf :: Expr -> EnvironmentP ID
 inferTypeOf (XEqual e1 e2) = inferTypeOfBinop e1 e2 eqType
 inferTypeOf (XGt e1 e2) = inferTypeOfBinop e1 e2 gtType
@@ -30,6 +26,7 @@ inferTypeOf (XAdd e1 e2) = inferTypeOfBinop e1 e2 addType
 inferTypeOf (XSub e1 e2) = inferTypeOfBinop e1 e2 subtractType
 inferTypeOf (XInt i) = tryUpdateDAG $ TInt $ INumber i
 inferTypeOf (XBool b) = tryUpdateDAG $ TBool $ BValue b
+inferTypeOf XUnit = return unitType
 inferTypeOf (XArray es) = do
   id_ts <- inferTypeOfMany es
   id_lub <- union id_ts
@@ -49,14 +46,14 @@ inferTypeOf (XStruct kvps) = inferTypeOf' kvps >>= tryUpdateDAG . TStruct
       tl' <- inferTypeOf' tl
       return $ (key, id_e) : tl'
     inferTypeOf' [] = return []
-inferTypeOf (XVar name) = 
+inferTypeOf (XSymbol name) = 
   tryFindID name >>= \case
     Just id' -> return id'
     Nothing -> throwError "variable is not declared"
-inferTypeOf (XProj e field) = do
+inferTypeOf (XProj e key) = do
   t <- inferTypeOf e >>= findByID
   case t of
-    TStruct kvps -> case find ((field ==) . fst) kvps of
+    TStruct kvps -> case find ((key ==) . fst) kvps of
       Just (_, v) -> return v
       Nothing -> return topType
     _ -> throwError "t is not a struct"
@@ -64,7 +61,15 @@ inferTypeOf (XIndex e1 e2) = do
   t <- inferTypeOf e1 >>= findByID
   i <- inferTypeOf e2 >>= findByID
   case (t, i) of
-    (TArray n t' cs, TInt i') -> undefined
+    (TArray n t' cs, TInt i') -> 
+      -- not exactly the LUB, but should be enough
+      case tryNarrowDownTInt 0 n i' of
+        Just (INumber i'') ->
+          case find ((== i'') . fst) cs of
+            Just (_, t'') -> return t''
+            Nothing -> return t'
+        Just _ -> return t'
+        Nothing -> throwError "index out of bound"
     _ -> throwError "t is not an array or i' is not an int type"
 inferTypeOf (XCall name as) = do
   id_f <- findTypeID name
@@ -79,6 +84,19 @@ inferTypeOfBinop e1 e2 id_f = do
   id_1 <- inferTypeOf e1
   id_2 <- inferTypeOf e2
   call id_f [id_1, id_2]
+
+-- assuming i1 < i2
+tryNarrowDownTInt :: Int -> Int -> TypeInt -> Maybe TypeInt
+tryNarrowDownTInt i1 i2 IInteger = Just $ IRange i1 i2
+tryNarrowDownTInt i1 i2 (IRange i1' i2') = 
+  let (i1'', i2'') = (max i1 i1', min i2 i2') in
+  if i1'' < i2'' then Just $ IRange i1'' i2''
+  else Nothing
+tryNarrowDownTInt i1 i2 (INumber i) = if i1 <= i && i <= i2 then Just $ INumber i else Nothing
+tryNarrowDownTInt i1 i2 (IUnion i1' i2') = do
+  i1'' <- tryNarrowDownTInt i1 i2 i1'
+  i2'' <- tryNarrowDownTInt i1 i2 i2'
+  return $ IUnion i1'' i2''
 
 -- isSingleton :: TypeExpr -> EnvironmentP Bool
 -- isSingleton (TInt (INumber _)) = return True
@@ -100,44 +118,44 @@ initializeAll :: EnvironmentP ()
 initializeAll = undefined
 
 eqType :: ID
-eqType = undefined
+eqType = 1
 
 gtType :: ID
 -- gtType = TMap [TInt, TInt] TBool
-gtType = undefined
+gtType = 2
 
 ltType :: ID
-ltType = undefined
+ltType = 3
 
 andType :: ID
-andType = undefined
+andType = 4
 
 orType :: ID
-orType = undefined
+orType = 5
 
 notType :: ID
-notType = undefined
+notType = 6
 
 addType :: ID
-addType = undefined
+addType = 7
 
 subtractType :: ID
-subtractType = undefined
+subtractType = 8
 
 intType :: ID
-intType = undefined
+intType = 9
 
 bottomType :: ID
-bottomType = undefined
+bottomType = 10
 
 topType :: ID
-topType = undefined
+topType = 11
 
 boolType :: ID
-boolType = undefined
+boolType = 12
 
--- unitType :: TypeExpr
--- unitType = TUnit
+unitType :: ID
+unitType = 13
 
 call :: ID -> [ID] -> EnvironmentP ID
 call id_f id_as = do
@@ -149,33 +167,14 @@ call id_f id_as = do
     _ -> throwError "call only accepts mappings"
   where
     checkParams (p : ps) (a : as) = do
-      glb <- intersect [p, a]
-      absurdityGuard glb
-      a `isSubtypeOf` p >>= guard
-      checkParams ps as
+      res <- tryMoveBelow a p
+      if res then checkParams ps as
+      else throwError "no casting from argument to a subtype of p"
     checkParams [] [] = return ()
     checkParams _ _ = throwError "parameter arity mismatch"
 
 isSubtypeOf :: ID -> ID -> EnvironmentP Bool
 isSubtypeOf t1 t2 = isConnected t1 t2 <$> getDAG
-
--- eqTypingRule :: Arity2
--- eqTypingRule t1 t2 = if t1 `equals` t2 then TTrue else TBool
-
--- gtTypingRule :: Arity2
--- gtTypingRule t1 t2 =
---   if (t1 `isSubtypeOf` TInt) && (t2 `isSubtypeOf` TInt) && (getMax t1 < getMin t2)
---   then TTrue
---   else TBool
-
--- ltTypingRule :: Arity2
--- ltTypingRule t1 t2 =
---   if (t1 `isSubtypeOf` TInt) && (t2 `isSubtypeOf` TInt) && (getMax t2 < getMin t1)
---   then TTrue
---   else TBool
-
--- readonlyRule :: Arity2
--- readonlyRule = undefined
 
 getMinInt :: TypeInt -> EnvironmentP Int
 getMinInt (IRange i1 _) = return i1
@@ -192,20 +191,41 @@ getMaxInt (IUnion _ i2) = getMaxInt i2
 absurdityGuard :: ID -> EnvironmentP ()
 absurdityGuard t = when (t == bottomType) $ throwError "no suitable type"
 
-typeCheck :: Program -> EnvironmentP ()
-typeCheck = foldr ((>>) . typeCheck') $ pure ()
-
-typeCheck' :: Statement -> EnvironmentP ()
-typeCheck' (SAssign var e) = do
-  id_left <- inferTypeOf (XVar var)
-  id_right <- inferTypeOf e
-  glb <- intersect [id_left, id_right]
+typeCoercion :: ID -> ID -> EnvironmentP ID
+typeCoercion orig constraint = do
+  glb <- intersect [orig, constraint]
   absurdityGuard glb
-  setVarToTypeID var glb
-  case e of
-    XVar e' -> setVarToTypeID e' glb
-    _ -> return ()
-typeCheck' (SImpure e) = do
-  t <- inferTypeOf e
-  absurdityGuard t
-typeCheck' _ = undefined
+  return glb
+
+typeCheck :: Program -> EnvironmentP (Signal ID)
+typeCheck [] = return SigContinue
+typeCheck (stmt : rest) = do
+  sig <- typeCheck' stmt
+  case sig of
+    SigContinue -> typeCheck rest
+    _ -> return sig
+
+typeCheck' :: Statement -> EnvironmentP (Signal ID)
+typeCheck' (SAssign var e) = do
+  id_right <- inferTypeOf e
+  absurdityGuard id_right
+  -- setVarToTypeID var id_right
+  
+  return SigContinue
+typeCheck' (SImpure e) = inferTypeOf e >>= absurdityGuard >> return SigContinue
+typeCheck' SBreak = return SigBreak
+typeCheck' (SReturn expr) = SigReturn <$> inferTypeOf expr
+typeCheck' (SIf be if_true if_false) = do
+  id_bt <- inferTypeOf be
+  glb <- typeCoercion id_bt boolType
+  undefined
+typeCheck' (SWhile expr body) = undefined
+typeCheck' (SProcedure (name, ps, body)) = undefined
+typeCheck' (SSwitch expr cs) = do
+  t_expr <- inferTypeOf expr
+  checkCases t_expr cs
+  return SigContinue
+  where
+    checkCases _ [] = return ()
+    checkCases t_expr cs = undefined
+

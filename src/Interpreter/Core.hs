@@ -1,8 +1,12 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+
 module Interpreter.Core
   ( eval
   , evalM
   , execute
-  , executeMany )
+  , executeMany
+  , execWithEnv )
   where
 
 import Types
@@ -12,14 +16,23 @@ import Interpreter.Context
   , doesExistVar
   , findVar
   , findProc
-  , modifyVars, discardClosure )
-import Control.Monad.State( get , put , modify , evalStateT , guard )
-import Control.Monad.Except( throwError )
+  , modifyVars, discardClosure, getVars
+  , putVars )
+import Control.Monad.State( get , put , modify , evalStateT , runStateT , guard )
+import Control.Monad.Except( throwError , runExcept )
 import Control.Monad ( liftM2 )
 import Data.Functor ( (<&>) )
 import Data.Bifunctor ( second )
 import Data.List (find)
 import Data.List.Extra ( (!?) )
+
+-- given x / x.y / x[i] and return the state of x and value after set
+modifyVar :: (a -> Bool) -> (a -> a) -> [a] -> [a]
+modifyVar discriminator f vars =
+  foldl (\vars' v ->
+    if discriminator v then f v : vars
+    else v : vars
+  ) [] vars
 
 eval :: Environment -> Expr -> Unchecked Value
 eval env expr = evalStateT (evalM expr) env
@@ -27,7 +40,7 @@ eval env expr = evalStateT (evalM expr) env
 evalM :: Expr -> ProgramState Value
 evalM (XInt i) = return $ Int i
 evalM (XBool b) = return $ Bool b
--- evalM XUnit = return Unit
+evalM XUnit = return Unit
 -- evalM (XProc ps b) = return $ Proc ps b
 evalM (XAdd e1 e2) = do
   v1 <- evalM e1
@@ -91,11 +104,11 @@ evalM (XStruct s) =
       v <- evalM hd
       vs <- evalS tl
       return $ (name, v) : vs
-evalM (XVar var) = do
-  m <- findVar var
-  case m of
+evalM (XSymbol name) = do
+  var <- findVar name
+  case var of
     Just v -> return v
-    Nothing -> throwError $ var <> " is not declared"
+    Nothing -> throwError $ name <> " is not declared"
 evalM (XProj var1 var2) = do
   var1' <- evalM var1
   case var1' of
@@ -130,14 +143,33 @@ evalM (XCall fname exprs) = do
     vs <- evalArgs rest
     return $ v : vs
 
-execute :: Statement -> ProgramState Signal
-execute (SAssign name expr) = do
+execute :: Statement -> ProgramState (Signal Value)
+execute (SAssign var expr) = do
   v <- evalM expr
-  b <- doesExistVar name
-  if b then
-    modifyVars (map (\kvp@(name', _) -> if name' == name then (name, v) else kvp)) >>
-    return SigContinue
-  else modifyVars ((name, v) :) >> return SigContinue
+  vars <- getVars
+  subst <- substitute var (\v' v -> v)
+  case subst v of
+    Struct vars'' -> putVars vars'' >> return SigContinue
+    _ -> throwError "execute: how could this possibly happen?"
+  where
+    -- returns domain -> substitution -> new domain
+    substitute :: VarExpr -> (Value -> Value -> Value) -> ProgramState (Value -> Value)
+    substitute (VSymbol name) f_subst = do
+      vars <- getVars
+      return $ \v ->
+        Struct $ replaceOrInsert name v f_subst vars
+    substitute (VIndex arr index) f_subst = do
+      i <- evalM index
+      substitute arr (\domain v -> case (domain, i) of
+        (Array es, Int i') -> Array $ map snd $ replaceOrInsert i' v f_subst (zip [0..] es)
+        _ -> error "can't index non-array values or index is not int")
+    substitute (VProj dict key) f_subst =
+      substitute dict (\domain v -> case domain of
+        Struct kvps -> Struct $ replaceOrInsert key v f_subst kvps
+        _ -> error "")
+    replaceOrInsert key x f [] = [(key, x)]
+    replaceOrInsert key' x f ((key, hd) : tl) =
+      if key' == key then (key, f hd x) : tl else (key, hd) : replaceOrInsert key' x f tl
 execute (SIf c tbranch fbranch) = do
   v <- evalM c
   env <- get
@@ -168,8 +200,6 @@ execute (SSwitch expr cs) = do
     (Int _, PValue (BindV i')) -> expand i' v
     (Bool _, PValue (MatchV mx)) -> evalM mx >>= assert v
     (Bool _, PValue (BindV b')) -> expand b' v
-    -- (Unit, PValue (MatchV mx)) -> evalM mx >>= assert v
-    -- (Unit, PValue (BindV u')) -> expand u' v
     (Struct kvps, PStruct rps) -> checkRecord kvps rps
     (Array a, PArray aps) -> checkArray a aps
     _ -> return False
@@ -184,7 +214,7 @@ execute (SSwitch expr cs) = do
       Nothing -> return False
   checkRecord _ [] = return False
   checkArray [] EmptyA = return True
-  checkArray (v : rest) (CheckA p aps) = liftM2 (&&) (checkPattern v p) (checkArray rest aps)
+  checkArray (v : rest) (CheckA p aps) = (&&) <$> checkPattern v p <*> checkArray rest aps
   checkArray (_ : _) (SkipSomeA EmptyA) = return True
   checkArray (_ : _ : rest) (SkipSomeA (SkipSomeA aps)) = checkArray rest aps
   checkArray (_ : v : rest) sa@(SkipSomeA (CheckA p as)) = do
@@ -192,15 +222,17 @@ execute (SSwitch expr cs) = do
     if res then checkArray rest as
     else checkArray rest sa
   checkArray _ _ = return False
-  expand :: Variable -> Value -> ProgramState Bool
   expand name v = modifyVars ((name, v) :) >> return True
   assert value match = return (value == match)
 execute (SProcedure p) = modify (second (p :)) >> return SigContinue
 
-executeMany :: [Statement] -> ProgramState Signal
-executeMany [] = return $ SigReturn Null
+executeMany :: [Statement] -> ProgramState (Signal Value)
+executeMany [] = return $ SigReturn Unit
 executeMany (stmt : rest) = do
   sig <- execute stmt
   case sig of
     SigContinue -> executeMany rest
     _ -> return sig
+
+execWithEnv ::  Environment -> Program -> Either String (Signal Value, Environment)
+execWithEnv env prog = runExcept $ runStateT (executeMany prog) env

@@ -56,41 +56,44 @@ $$
 \end{prooftree}
 $$
 
-Indexed Var
+Indexing
 
 $$
 \begin{prooftree}
-\AxiomC{$A,\ C\vdash x:\tau=\langle\tau,\ n,\ \ldots\tau_i\ldots\rangle,\ i:\tau_i\subseteq\Z$}
-\UnaryInfC{$A,\ C\cup\overline{C_i}\vdash x[i]:\tau_i,\quad i:\tau_i\cap[0,n)$}
+\AxiomC{$A,\ C\vdash x:\tau=\langle\tau,\ n,\ \ldots\tau_i\ldots\rangle,\ i:\tau_j$}
+\UnaryInfC{$A,\ C\cup\overline{C_i}\vdash x[i]:\tau_i,\quad i:\tau_j\cap[0,n)$}
 \end{prooftree}
 $$
 
-Projected Var
+Projection
 
 $$
 \begin{prooftree}
 \AxiomC{$A,\ C\vdash x:\tau\cup\{x.y\mapsto\tau'\}$}
-\UnaryInfC{$A,\ C\cup\overline{C_y}\vdash x.y:\tau'$}
+\UnaryInfC{$A,\ C\vdash x.y:\tau'$}
 \end{prooftree}
-\quad
-\begin{prooftree}
-\AxiomC{$A,\ C\vdash x:\tau$}
-\UnaryInfC{$A,\ C\vdash x.y:\top,\quad x:\tau\cap\{x.y\mapsto\tau'\}$}
-\end{prooftree}
+%\quad
+%\begin{prooftree}
+%\AxiomC{$A,\ C\vdash x:\tau$}
+%\UnaryInfC{$A,\ C\vdash x.y:\top,\quad x:\tau\cap\{x.y\mapsto\tau'\}$}
+%\end{prooftree}
 $$
 
 ---
 
 Struct
+
 $$
 \begin{prooftree}
 \AxiomC{$A,C \vdash e_1:\tau_1,\ \ldots,\ e_n:\tau_n$}
 \UnaryInfC{$A,C \vdash c(e_1,\ \ldots,\ e_n):c(\tau_1,\ \ldots,\ \tau_n)$}
 \end{prooftree}
 $$
+
 ---
 
 Array 1
+
 $$
 \def\lub{\mathrm{lub}}
 \begin{prooftree}
@@ -117,11 +120,12 @@ $$
 ---
 
 Assign
+
 $$
 \begin{prooftree}
 \AxiomC{$A,\ C\vdash e:\tau$}
 \AxiomC{$A\cup\{x\mapsto\tau\},C\vdash x:\tau$}
-\BinaryInfC{$A,\ C-\overline{C_x}\vdash x=e:\circ,\quad x:\tau$}
+\BinaryInfC{$A,\ (C-\overline{C_x})\cup C[e\mapsto x]\vdash x=e:\circ,\quad x:\tau$}
 \end{prooftree}
 $$
 
@@ -160,12 +164,13 @@ Apply
 $$
 \begin{prooftree}
 \AxiomC{$A,\ C\vdash f:\tau_f,e_1:\tau_1,\ldots,e_n:\tau_n$}
-\UnaryInfC{$A,\ C\vdash f(e_1,\ldots,e_n):\beta,\quad\tau_f=\alpha_1,\ldots,\alpha_n\rightarrow\alpha,\quad\beta\subseteq\alpha,\quad\tau_1\subseteq\alpha_1,\ldots,\tau_n\subseteq\alpha_n$}
+\UnaryInfC{$A,\ C-\overline{C_x}\vdash f(e_1,\ldots,e_n):\beta,\quad\tau_f=\alpha_1,\ldots,\alpha_n\rightarrow\alpha,\quad\beta\subseteq\alpha,\quad\tau_1\subseteq\alpha_1,\ldots,\tau_n\subseteq\alpha_n$}
 \end{prooftree}
 $$
 
-Pattern Matching
+- $\overline{C_x}$ are all the constraints on $x$ which values are changed
 
+Pattern Matching
 $$
 \begin{prooftree}
 \AxiomC{$

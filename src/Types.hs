@@ -1,10 +1,10 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE InstanceSigs #-}
 
 module Types
   ( Variable
   , Value(..) 
   , Expr(..)
+  , VarExpr(..)
   , Pattern(..) 
   , Statement(..) 
   , Program
@@ -22,15 +22,17 @@ module Types
   where
 
 import Control.Monad.Except ( Except )
+import Data.List ( intersperse )
 
 data Value = Int Int
            | Bool Bool
-           | Null
+           | Unit
            | Array [Value]
-        --    | LinkedList [Value]
            | Struct [(Variable, Value)]
-          --  | Proc [Variable] [Statement]
-          --  | Exception String {- !!WARNING!! ONLY FOR ERROR -}
+  deriving (Show, Eq)
+data VarExpr = VSymbol Variable
+             | VIndex VarExpr Expr
+             | VProj VarExpr Variable
 data Expr = XEqual Expr Expr
           | XGt Expr Expr
           | XLt Expr Expr
@@ -41,9 +43,11 @@ data Expr = XEqual Expr Expr
           | XSub Expr Expr
           | XInt Int
           | XBool Bool
+          | XUnit
           | XArray [Expr]
+          -- | XSpan 
           | XStruct [(Variable, Expr)]
-          | XVar Variable
+          | XSymbol Variable
           | XCall Variable [Expr]
           | XProj Expr Variable
           | XIndex Expr Expr
@@ -52,15 +56,11 @@ data ValuePattern = MatchV Expr
 data ArrayPattern = EmptyA
                   | SkipSomeA ArrayPattern
                   | CheckA Pattern ArrayPattern
--- data LListPattern = EmptyL
---                   | MatchL Expr LListPattern
---                   | BindL Pattern LListPattern
 data Pattern = PValue ValuePattern
              | PArray ArrayPattern
-            --  | LListP LListPattern
              | PStruct [RecordEntryPattern]
              | PWildcard
-data Statement = SAssign Variable Expr
+data Statement = SAssign VarExpr Expr
                | SIf Expr [Statement] [Statement]
                | SWhile Expr [Statement]
                | SSwitch Expr [CaseClause]
@@ -73,10 +73,9 @@ data TypeExpr = TUnion ID ID
               | TBool TypeBool
               | TArray Int ID [(Index, ID)]
               | TStruct [(Variable, ID)]
-              -- | TVar Variable
               | TTop
               | TBottom
-              | TNull
+              | TUnit
               | TMap [ID] ID
 data TypeInt = IInteger
              | IRange Int Int
@@ -84,9 +83,10 @@ data TypeInt = IInteger
              | INumber Int
 data TypeBool = BBool
               | BValue Bool
-data Signal = SigReturn Value
-            | SigContinue
-            | SigBreak
+data Signal t = SigReturn t
+              | SigContinue
+              | SigBreak
+  deriving (Show)
 type Variable = String
 type Procedure = (Variable, [Variable], [Statement])
 type Program = [Statement]
@@ -95,11 +95,3 @@ type CaseClause = (Pattern, [Statement])
 type RecordEntryPattern = (Variable, Pattern)
 type Index = Int
 type ID = Int
-instance Eq Value where
-  (==) :: Value -> Value -> Bool
-  Int i1 == Int i2 = i1 == i2
-  Bool b1 == Bool b2 = b1 == b2
-  Array a1 == Array a2 = a1 == a2
-  -- LinkedList l1 == LinkedList l2 = l1 == l2
-  Struct s1 == Struct s2 = s1 == s2
-  _ == _ = False
