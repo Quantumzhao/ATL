@@ -9,7 +9,7 @@
 # to be used for project dependencies. For example:
 #
 resolver: lts-21.13
-# resolver: nightly-2023-09-24
+# resolver: nightly-2024-01-01
 #
 # The location of a snapshot can be provided as a file or url. Stack assumes
 # a snapshot provided as a file might change, whereas a url resource does not.
@@ -35,7 +35,9 @@ packages:
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
 #
-# extra-deps:
+extra-deps:
+# - .
+# - dag-0.1.0.2@sha256:b541d487bfd117ce5849c54cacf5b952a2d6872b2cfa8fc442584a3d310997f0,3773
 # - .
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
@@ -53,7 +55,6 @@ packages:
 # - language-c-0.9.2@sha256:b4ec4cbab51a466463cf31c63e6e792f2ac9cfb563296deae02d7be26aba0e0f,4737
 # - alex-3.4.0.1@sha256:9d88e2463b268dfd41e5c9d6964e28a1532bae3c70241de85460b84a4b5ac528,3886
 # - happy-1.20.1.1@sha256:a381633c5e8f9e9e5a8e1900930ce13172397b4677fcfcc08cd38eb3f73b61b1,5811
-extra-deps: []
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
